@@ -138,4 +138,18 @@ class ApiClient {
   Future<void> deleteCategory(int categoryId) async {
     await _dio.delete('/categories/$categoryId');
   }
+
+  Future<List<Map<String, dynamic>>> getMembers() async {
+    final response = await _dio.get('/users/members/list');
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
+  Future<Map<String, dynamic>> createInvite(String role) async {
+    final response = await _dio.post('/invites/', data: {'role': role});
+    return response.data;
+  }
+
+  Future<void> removeMember(int userId) async {
+    await _dio.delete('/users/members/$userId');
+  }
 }

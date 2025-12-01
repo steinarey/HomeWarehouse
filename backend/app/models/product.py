@@ -10,7 +10,8 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=False)
-    barcode: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey("warehouses.id"), nullable=False)
+    barcode: Mapped[Optional[str]] = mapped_column(String, nullable=True) # Removed unique=True to allow same barcode in different warehouses, will handle uniqueness in logic or composite index
     package_size: Mapped[int] = mapped_column(Integer, default=1)
     photo_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     product_metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
@@ -18,3 +19,4 @@ class Product(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     category = relationship("Category")
+    warehouse = relationship("Warehouse")

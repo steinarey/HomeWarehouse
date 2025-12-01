@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/data/models/category.dart';
 import 'package:mobile/domain/providers/core_providers.dart';
+import 'package:mobile/l10n/app_localizations.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -18,7 +19,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         .getCategories(includeStock: true);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Categories')),
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context).get('categories')),
+      ),
       body: FutureBuilder<List<Category>>(
         future: categoriesAsync,
         builder: (context, snapshot) {
@@ -29,7 +32,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No categories found'));
+            return Center(
+              child: Text(
+                AppLocalizations.of(context).get('noCategoriesFound'),
+              ),
+            );
           }
 
           final categories = snapshot.data!;
@@ -61,7 +68,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Category'),
+        title: Text(AppLocalizations.of(context).get('editCategory')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,12 +90,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).get('cancel')),
           ),
           TextButton(
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             onPressed: () => _showDeleteConfirmation(category),
-            child: const Text('Delete'),
+            child: Text(AppLocalizations.of(context).get('delete')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -111,7 +118,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 }
               }
             },
-            child: const Text('Save'),
+            child: Text(AppLocalizations.of(context).get('save')),
           ),
         ],
       ),
@@ -129,12 +136,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).get('cancel')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: Text(
+              AppLocalizations.of(context).get('delete'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -152,7 +162,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting category: $e')),
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).get('errorDeletingCategory'),
+              ),
+            ),
           );
         }
       }

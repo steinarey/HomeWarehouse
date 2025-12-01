@@ -7,6 +7,7 @@ import 'package:mobile/domain/providers/auth_provider.dart';
 import 'package:mobile/domain/providers/theme_provider.dart';
 import 'package:mobile/domain/providers/locale_provider.dart';
 import 'package:mobile/l10n/app_localizations.dart';
+import 'package:mobile/presentation/screens/user_management_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -38,9 +39,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.invalidate(userRepositoryProvider);
 
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Backend URL saved')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).get('backendUrlSaved')),
+        ),
+      );
     }
   }
 
@@ -50,37 +53,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final usersAsync = ref.watch(usersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).get('settings'))),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          const Text(
-            'Connection',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context).get('connection'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _urlController,
-            decoration: const InputDecoration(
-              labelText: 'Backend URL',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).get('backendUrl'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 8),
-          ElevatedButton(onPressed: _saveUrl, child: const Text('Save URL')),
+          ElevatedButton(
+            onPressed: _saveUrl,
+            child: Text(AppLocalizations.of(context).get('saveUrl')),
+          ),
           const Divider(height: 32),
-          const Text(
-            'Active User',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context).get('activeUser'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           activeUserAsync.when(
             data: (activeUser) => usersAsync.when(
               data: (users) => DropdownButtonFormField<int>(
                 initialValue: activeUser?.id,
-                decoration: const InputDecoration(
-                  labelText: 'Current User',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).get('currentUser'),
+                  border: const OutlineInputBorder(),
                 ),
                 items: users
                     .map(
@@ -153,12 +159,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const Divider(height: 32),
+
+          Text(
+            AppLocalizations.of(context).get('userManagement'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            leading: const Icon(Icons.group),
+            title: Text(AppLocalizations.of(context).get('manageUsers')),
+            subtitle: Text(
+              AppLocalizations.of(context).get('inviteUsersAndRoles'),
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UserManagementScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 32),
           Text(
             AppLocalizations.of(context).get('appInfo'),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          const ListTile(title: Text('Version'), subtitle: Text('1.0.0')),
+          ListTile(
+            title: Text(AppLocalizations.of(context).get('version')),
+            subtitle: const Text('1.0.0'),
+          ),
           const Divider(height: 32),
           SizedBox(
             width: double.infinity,
@@ -168,7 +199,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 // Router will redirect to login automatically
               },
               icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
+              label: Text(AppLocalizations.of(context).get('logout')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,

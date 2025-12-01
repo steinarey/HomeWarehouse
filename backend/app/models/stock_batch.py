@@ -8,6 +8,7 @@ class StockBatch(Base):
     __tablename__ = "stock_batches"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey("warehouses.id"), nullable=False)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
     location_id: Mapped[Optional[int]] = mapped_column(ForeignKey("locations.id"), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=0) # non-negative check to be enforced in logic/DB constraint
@@ -17,3 +18,4 @@ class StockBatch(Base):
 
     product = relationship("Product")
     location = relationship("Location")
+    warehouse = relationship("Warehouse")

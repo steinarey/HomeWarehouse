@@ -8,6 +8,7 @@ class InventoryAction(Base):
     __tablename__ = "inventory_actions"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    warehouse_id: Mapped[int] = mapped_column(ForeignKey("warehouses.id"), nullable=False)
     user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     action_type: Mapped[str] = mapped_column(String, nullable=False) # consume, restock, edit
     source: Mapped[Optional[str]] = mapped_column(String, nullable=True) # barcode, nfc, manual, api
@@ -24,6 +25,7 @@ class InventoryAction(Base):
     undone_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
+    warehouse = relationship("Warehouse")
     product = relationship("Product")
     category = relationship("Category")
     stock_batch = relationship("StockBatch")

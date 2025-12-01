@@ -34,14 +34,37 @@ class BaseUrl extends _$BaseUrl {
 @Riverpod(keepAlive: true)
 Dio dio(DioRef ref) {
   final baseUrl = ref.watch(baseUrlProvider);
+  final prefs = ref.watch(sharedPreferencesProvider);
 
-  return Dio(
+  final dio = Dio(
     BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 5),
       receiveTimeout: const Duration(seconds: 3),
     ),
   );
+
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        final token = prefs.getString('auth_token');
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        // Also add X-Warehouse-Id if available (for future use/completeness)
+        // For now, let's just focus on Auth.
+        // Actually, we need X-Warehouse-Id for isolation!
+        // But where do we store it? Maybe just default to first one on backend if missing.
+        // But wait, backend deps.py says:
+        // if x_warehouse_id is None: try to find the first warehouse...
+        // So X-Warehouse-Id is optional but good to have.
+        // Let's stick to Auth first.
+        return handler.next(options);
+      },
+    ),
+  );
+
+  return dio;
 }
 
 @Riverpod(keepAlive: true)

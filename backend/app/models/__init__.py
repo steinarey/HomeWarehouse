@@ -4,3 +4,6 @@ from .category import Category
 from .product import Product
 from .stock_batch import StockBatch
 from .inventory_action import InventoryAction
+from .warehouse import Warehouse
+from .warehouse_member import WarehouseMember
+from .invite import Invite

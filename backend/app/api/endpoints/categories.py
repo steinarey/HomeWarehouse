@@ -3,7 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.api import deps
+from app.api import deps
 from app.models.category import Category as CategoryModel
+from app.models.warehouse_member import WarehouseMember
 from app.models.product import Product as ProductModel
 from app.models.stock_batch import StockBatch as StockBatchModel
 from app.models.inventory_action import InventoryAction as InventoryActionModel
@@ -16,9 +18,10 @@ def read_categories(
     skip: int = 0, 
     limit: int = 100, 
     include_stock: bool = False,
-    db: Session = Depends(deps.get_db)
+    db: Session = Depends(deps.get_db),
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member)
 ):
-    categories = db.query(CategoryModel).offset(skip).limit(limit).all()
+    categories = db.query(CategoryModel).filter(CategoryModel.warehouse_id == current_member.warehouse_id).offset(skip).limit(limit).all()
     
     if include_stock:
         # This is N+1 query, but fine for iteration 1 and small datasets. 
@@ -37,23 +40,48 @@ def read_categories(
     return categories
 
 @router.post("/", response_model=Category)
-def create_category(category: CategoryCreate, db: Session = Depends(deps.get_db)):
-    db_category = CategoryModel(**category.model_dump())
+def create_category(
+    category: CategoryCreate, 
+    db: Session = Depends(deps.get_db),
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member)
+):
+    if current_member.role == "viewer":
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    db_category = CategoryModel(**category.model_dump(), warehouse_id=current_member.warehouse_id)
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
     return db_category
 
 @router.get("/{category_id}", response_model=Category)
-def read_category(category_id: int, db: Session = Depends(deps.get_db)):
-    category = db.query(CategoryModel).filter(CategoryModel.id == category_id).first()
+def read_category(
+    category_id: int, 
+    db: Session = Depends(deps.get_db),
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member)
+):
+    category = db.query(CategoryModel).filter(
+        CategoryModel.id == category_id,
+        CategoryModel.warehouse_id == current_member.warehouse_id
+    ).first()
     if category is None:
         raise HTTPException(status_code=404, detail="Category not found")
     return category
 
 @router.patch("/{category_id}", response_model=Category)
-def update_category(category_id: int, category_in: CategoryUpdate, db: Session = Depends(deps.get_db)):
-    category = db.query(CategoryModel).filter(CategoryModel.id == category_id).first()
+def update_category(
+    category_id: int, 
+    category_in: CategoryUpdate, 
+    db: Session = Depends(deps.get_db),
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member)
+):
+    if current_member.role == "viewer":
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    category = db.query(CategoryModel).filter(
+        CategoryModel.id == category_id,
+        CategoryModel.warehouse_id == current_member.warehouse_id
+    ).first()
     if category is None:
         raise HTTPException(status_code=404, detail="Category not found")
     
@@ -67,8 +95,18 @@ def update_category(category_id: int, category_in: CategoryUpdate, db: Session =
     return category
 
 @router.delete("/{category_id}", response_model=Category)
-def delete_category(category_id: int, db: Session = Depends(deps.get_db)):
-    category = db.query(CategoryModel).filter(CategoryModel.id == category_id).first()
+def delete_category(
+    category_id: int, 
+    db: Session = Depends(deps.get_db),
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member)
+):
+    if current_member.role == "viewer":
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    category = db.query(CategoryModel).filter(
+        CategoryModel.id == category_id,
+        CategoryModel.warehouse_id == current_member.warehouse_id
+    ).first()
     if category is None:
         raise HTTPException(status_code=404, detail="Category not found")
     

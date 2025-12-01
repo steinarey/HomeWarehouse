@@ -2,16 +2,14 @@ from datetime import datetime
 from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
-import uuid
 
-class User(Base):
-    __tablename__ = "users"
+class Warehouse(Base):
+    __tablename__ = "warehouses"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, index=True)
-    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
-    role: Mapped[str] = mapped_column(String, default="user") # editor, viewer
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    memberships = relationship("WarehouseMember", back_populates="user", cascade="all, delete-orphan")
+    members = relationship("WarehouseMember", back_populates="warehouse", cascade="all, delete-orphan")
+    invites = relationship("Invite", back_populates="warehouse", cascade="all, delete-orphan")
