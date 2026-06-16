@@ -371,7 +371,8 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
                     child: DropdownButtonFormField<Category>(
                       initialValue: selectedCategory,
                       decoration: InputDecoration(
-                        labelText: AppLocalizations.of(context).get('category'),
+                        labelText:
+                            '${AppLocalizations.of(context).get('category')} (${AppLocalizations.of(context).get('optional')})',
                         border: const OutlineInputBorder(),
                       ),
                       items: categories
@@ -420,16 +421,61 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
-                  if (nameController.text.isEmpty || selectedCategory == null) {
-                    return;
+                  if (nameController.text.isEmpty) return;
+
+                  final productName = nameController.text.trim();
+                  Category? targetCategory = selectedCategory;
+
+                  // No category picked → auto-create or attach to a same-named
+                  // category. Confirm with the user either way.
+                  if (targetCategory == null) {
+                    final existing = categories
+                        .where(
+                          (c) =>
+                              c.name.toLowerCase() == productName.toLowerCase(),
+                        )
+                        .toList();
+
+                    final confirmed = await _confirmAutoCategory(
+                      productName,
+                      existing.isNotEmpty,
+                    );
+                    if (confirmed != true) return;
+
+                    if (existing.isNotEmpty) {
+                      targetCategory = existing.first;
+                    } else {
+                      try {
+                        targetCategory = await ref
+                            .read(categoryRepositoryProvider)
+                            .createCategory({
+                              'name': productName,
+                              'min_stock': 0,
+                            });
+                        // Make new category visible if the user re-opens the
+                        // dropdown later in this sheet.
+                        categories.add(targetCategory);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '${AppLocalizations.of(context).get('errorCreatingProduct')}: $e',
+                              ),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                    }
                   }
 
                   try {
                     final newProduct = await ref
                         .read(productRepositoryProvider)
                         .createProduct({
-                          'name': nameController.text,
-                          'category_id': selectedCategory!.id,
+                          'name': productName,
+                          'category_id': targetCategory.id,
                           'barcode': barcode,
                           'package_size':
                               int.tryParse(pkgSizeController.text) ?? 1,
@@ -456,6 +502,31 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<bool?> _confirmAutoCategory(String name, bool alreadyExists) async {
+    final l10n = AppLocalizations.of(context);
+    final message = (alreadyExists
+            ? l10n.get('autoCategoryExistsMessage')
+            : l10n.get('autoCategoryCreateMessage'))
+        .replaceFirst('{name}', name);
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.get('confirm')),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.get('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.get('confirmContinue')),
+          ),
+        ],
       ),
     );
   }

@@ -173,6 +173,21 @@ class ApiClient {
     return Category.fromJson(response.data);
   }
 
+  Future<InventoryAction> adjustCategoryStock({
+    required int categoryId,
+    required int newTotalQuantity,
+    String reason = 'manual_correction',
+  }) async {
+    final response = await _dio.post(
+      '/categories/$categoryId/adjust',
+      data: {
+        'new_total_quantity': newTotalQuantity,
+        'reason': reason,
+      },
+    );
+    return InventoryAction.fromJson(response.data);
+  }
+
   Future<void> deleteCategory(int categoryId) async {
     await _dio.delete('/categories/$categoryId');
   }

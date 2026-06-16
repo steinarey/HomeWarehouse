@@ -5,6 +5,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:mobile/data/models/product.dart';
 import 'package:mobile/domain/providers/core_providers.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 class CameraTab extends ConsumerStatefulWidget {
   final bool isRestockMode;
   final Function(Product) onProductFound;
@@ -105,7 +107,7 @@ class _CameraTabState extends ConsumerState<CameraTab>
                 _torchOn ? Icons.flash_on : Icons.flash_off,
                 color: Colors.white,
               ),
-              tooltip: 'Torch',
+              tooltip: AppLocalizations.of(context).get('torch'),
               onPressed: _toggleTorch,
             ),
           ),
@@ -121,7 +123,7 @@ class _CameraTabState extends ConsumerState<CameraTab>
                 _controller.start();
               },
               icon: const Icon(Icons.refresh),
-              label: const Text('Scan'),
+              label: Text(AppLocalizations.of(context).get('scan')),
             ),
           ),
         ),

@@ -1,5 +1,6 @@
 import 'package:mobile/data/api/api_client.dart';
 import 'package:mobile/data/models/category.dart';
+import 'package:mobile/data/models/inventory_action.dart';
 
 class CategoryRepository {
   final ApiClient _apiClient;
@@ -17,4 +18,15 @@ class CategoryRepository {
 
   Future<void> deleteCategory(int categoryId) =>
       _apiClient.deleteCategory(categoryId);
+
+  Future<InventoryAction> adjustCategoryStock({
+    required int categoryId,
+    required int newTotalQuantity,
+    String reason = 'manual_correction',
+  }) =>
+      _apiClient.adjustCategoryStock(
+        categoryId: categoryId,
+        newTotalQuantity: newTotalQuantity,
+        reason: reason,
+      );
 }

@@ -5,6 +5,8 @@ import 'package:mobile/domain/providers/dashboard_provider.dart';
 import 'package:mobile/presentation/common/summary_card.dart';
 import 'package:mobile/presentation/common/recent_activity_list.dart';
 
+import '../../l10n/app_localizations.dart';
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -13,7 +15,7 @@ class HomeScreen extends ConsumerWidget {
     final dashboardAsync = ref.watch(dashboardProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard'), actions: const []),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).get('dashboard')), actions: const []),
       body: dashboardAsync.when(
         data: (dashboard) => RefreshIndicator(
           onRefresh: () => ref.refresh(dashboardProvider.future),
@@ -27,7 +29,7 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: SummaryCard(
-                        title: 'Total Categories',
+                        title: AppLocalizations.of(context).get('totalCategories'),
                         value: dashboard.totalCategories.toString(),
                         onTap: () async {
                           await context.push('/categories');
@@ -38,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: SummaryCard(
-                        title: 'Low Stock',
+                        title: AppLocalizations.of(context).get('lowStock'),
                         value: dashboard.lowStockCategories.toString(),
                         color: dashboard.lowStockCategories > 0
                             ? Colors.orange.shade100
@@ -52,7 +54,7 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: SummaryCard(
-                        title: 'Critical',
+                        title: AppLocalizations.of(context).get('critical'),
                         value:
                             dashboard.lowStockCriticalCategories.toString(),
                         color: dashboard.lowStockCriticalCategories > 0
@@ -67,9 +69,12 @@ class HomeScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Recent Activity',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  AppLocalizations.of(context).get('recentActivity'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 RecentActivityList(actions: dashboard.recentActions),
@@ -82,10 +87,12 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Error loading dashboard: $err'),
+              Text(
+                '${AppLocalizations.of(context).get('errorLoadingDashboard')}: $err',
+              ),
               ElevatedButton(
                 onPressed: () => ref.refresh(dashboardProvider),
-                child: const Text('Retry'),
+                child: Text(AppLocalizations.of(context).get('retry')),
               ),
             ],
           ),

@@ -117,7 +117,7 @@ def get_summary(
 
     for cat in categories:
         total_stock = totals.get(cat.id, 0)
-        is_below_min = total_stock < cat.min_stock
+        is_below_min = total_stock <= cat.min_stock
 
         if low_only and not is_below_min:
             continue
@@ -152,9 +152,11 @@ def get_low_stock(
     for cat in categories:
         total_stock = totals.get(cat.id, 0)
 
-        if total_stock < cat.min_stock:
+        if total_stock <= cat.min_stock:
             target = cat.target_stock if cat.target_stock is not None else cat.min_stock
-            recommended = max(cat.min_stock, target) - total_stock
+            # At-min still flags as low (per spec), so recommend at least 1 to
+            # push the count above the threshold even when target == cur.
+            recommended = max(max(cat.min_stock, target) - total_stock, 1)
 
             result.append(LowStockItem(
                 category_id=cat.id,
@@ -192,7 +194,7 @@ def get_dashboard(
 
     for cat in categories:
         total_stock = totals.get(cat.id, 0)
-        if total_stock < cat.min_stock:
+        if total_stock <= cat.min_stock:
             low_stock_count += 1
             if cat.is_critical:
                 low_stock_critical_count += 1

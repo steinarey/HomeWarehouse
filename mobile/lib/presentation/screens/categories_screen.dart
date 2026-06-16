@@ -44,13 +44,54 @@ class CategoriesScreen extends ConsumerWidget {
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 final category = categories[index];
+                final current = category.currentStock ?? 0;
+                final isLow = current <= category.minStock;
+                final chipColor = isLow
+                    ? (category.isCritical
+                        ? Colors.red.shade100
+                        : Colors.orange.shade100)
+                    : Colors.green.shade100;
+                final chipFg = isLow
+                    ? (category.isCritical
+                        ? Colors.red.shade900
+                        : Colors.orange.shade900)
+                    : Colors.green.shade900;
+
                 return ListTile(
                   title: Text(category.name),
                   subtitle: Text(
                     '${l10n.get('minStock')}: ${category.minStock}'
                     '${category.consumptionRate != null ? ' • ${category.consumptionRate} ${l10n.get('days')}' : ''}',
                   ),
-                  trailing: const Icon(Icons.edit),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () =>
+                            _showAdjustDialog(context, ref, category, current),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: chipColor,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            '$current',
+                            style: TextStyle(
+                              color: chipFg,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.edit),
+                    ],
+                  ),
                   onTap: () => _showEditDialog(context, ref, category),
                 );
               },
@@ -65,6 +106,86 @@ class CategoriesScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showAdjustDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Category category,
+    int currentStock,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = TextEditingController(text: currentStock.toString());
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '${l10n.get('adjustAction')}: ${category.name}',
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '${l10n.get('currentStock')}: $currentStock',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: l10n.get('newTotalQuantity'),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.get('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final qty = int.tryParse(controller.text);
+              if (qty == null || qty < 0) return;
+              try {
+                await ref
+                    .read(categoryRepositoryProvider)
+                    .adjustCategoryStock(
+                      categoryId: category.id,
+                      newTotalQuantity: qty,
+                    );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ref.invalidate(categoriesProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '${l10n.get('adjustedMessage')} ${category.name} → $qty',
+                      ),
+                    ),
+                  );
+                }
+              } on Object catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '${l10n.get('errorMessage')}: $e',
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(l10n.get('save')),
+          ),
+        ],
       ),
     );
   }

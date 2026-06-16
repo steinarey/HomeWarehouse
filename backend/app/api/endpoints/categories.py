@@ -1,8 +1,8 @@
 from typing import List, Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.api import deps
 from app.api import deps
 from app.models.category import Category as CategoryModel
 from app.models.warehouse_member import WarehouseMember
@@ -10,6 +10,13 @@ from app.models.product import Product as ProductModel
 from app.models.stock_batch import StockBatch as StockBatchModel
 from app.models.inventory_action import InventoryAction as InventoryActionModel
 from app.schemas.category import Category, CategoryCreate, CategoryUpdate
+from app.schemas.inventory import AdjustRequest, InventoryAction
+from app.services.inventory_service import InventoryService
+
+
+class CategoryAdjustRequest(BaseModel):
+    new_total_quantity: int
+    reason: str = "manual_correction"
 
 router = APIRouter()
 
@@ -36,7 +43,7 @@ def read_categories(
         for cat in categories:
             total_stock = totals.get(cat.id, 0)
             cat.current_stock = total_stock
-            cat.is_below_min = total_stock < cat.min_stock
+            cat.is_below_min = total_stock <= cat.min_stock
 
     return categories
 
@@ -144,3 +151,63 @@ def delete_category(
     db.delete(category)
     db.commit()
     return category
+
+
+@router.post("/{category_id}/adjust", response_model=InventoryAction)
+def adjust_category_stock(
+    category_id: int,
+    request: CategoryAdjustRequest,
+    db: Session = Depends(deps.get_db),
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member),
+):
+    """Set the total stock for a category.
+
+    Implementation constraint: an "edit" InventoryAction is per-product, so
+    this endpoint only applies when the category has exactly one product. For
+    multi-product categories the caller should adjust each product individually
+    via /inventory/adjust.
+    """
+    if current_member.role == "viewer":
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    if request.new_total_quantity < 0:
+        raise HTTPException(status_code=400, detail="new_total_quantity must be non-negative")
+
+    category = db.query(CategoryModel).filter(
+        CategoryModel.id == category_id,
+        CategoryModel.warehouse_id == current_member.warehouse_id,
+    ).first()
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    products = (
+        db.query(ProductModel)
+        .filter(ProductModel.category_id == category_id)
+        .all()
+    )
+    if not products:
+        raise HTTPException(
+            status_code=400,
+            detail="Category has no products. Create a product first.",
+        )
+    if len(products) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Category has multiple products. Adjust each product individually.",
+        )
+
+    target_product = products[0]
+    adjust_req = AdjustRequest(
+        product_id=target_product.id,
+        new_total_quantity=request.new_total_quantity,
+        reason=request.reason,
+    )
+    try:
+        return InventoryService.adjust(
+            db,
+            adjust_req,
+            actor_user_id=current_member.user_id,
+            warehouse_id=current_member.warehouse_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
