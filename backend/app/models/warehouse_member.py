@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlalchemy import String, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.core.time import utc_now
 from app.db.base import Base
 
 class WarehouseMember(Base):
@@ -10,7 +11,7 @@ class WarehouseMember(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     warehouse_id: Mapped[int] = mapped_column(ForeignKey("warehouses.id"), nullable=False)
     role: Mapped[str] = mapped_column(String, default="user") # admin, user, viewer
-    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
     user = relationship("User", back_populates="memberships")
     warehouse = relationship("Warehouse", back_populates="members")

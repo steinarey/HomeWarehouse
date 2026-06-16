@@ -1,12 +1,44 @@
-from datetime import datetime
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from app.core.time import utc_now
 from app.models.product import Product
 from app.models.stock_batch import StockBatch
 from app.models.inventory_action import InventoryAction
 from app.models.category import Category
 from app.schemas.inventory import RestockRequest, ConsumeRequest, AdjustRequest
+
+
+def _consume_fefo(db: Session, product_id: int, amount: int) -> Optional[int]:
+    """Drain `amount` units across batches FEFO. Returns the id of the last
+    batch touched (for action bookkeeping). Caller must guarantee total stock
+    >= amount.
+    """
+    if amount <= 0:
+        return None
+
+    batches = (
+        db.query(StockBatch)
+        .filter(StockBatch.product_id == product_id, StockBatch.quantity > 0)
+        .order_by(
+            StockBatch.expiry_date.asc().nullslast(),
+            StockBatch.created_at.asc(),
+        )
+        .all()
+    )
+
+    remaining = amount
+    last_batch_id: Optional[int] = None
+    for b in batches:
+        if remaining <= 0:
+            break
+        take = min(b.quantity, remaining)
+        b.quantity -= take
+        remaining -= take
+        last_batch_id = b.id
+
+    return last_batch_id
+
 
 class InventoryService:
     @staticmethod
@@ -15,10 +47,15 @@ class InventoryService:
         return total or 0
 
     @staticmethod
-    def restock(db: Session, request: RestockRequest) -> InventoryAction:
-        product = db.query(Product).filter(Product.id == request.product_id).first()
-        if not product:
+    def _get_product_scoped(db: Session, product_id: int, warehouse_id: int) -> Product:
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product or product.warehouse_id != warehouse_id:
             raise ValueError("Product not found")
+        return product
+
+    @staticmethod
+    def restock(db: Session, request: RestockRequest, *, actor_user_id: int, warehouse_id: int) -> InventoryAction:
+        product = InventoryService._get_product_scoped(db, request.product_id, warehouse_id)
 
         quantity_units = request.quantity_packages * product.package_size
         
@@ -36,6 +73,7 @@ class InventoryService:
         else:
             batch = StockBatch(
                 product_id=request.product_id,
+                warehouse_id=product.warehouse_id,
                 location_id=request.location_id,
                 quantity=quantity_units,
                 expiry_date=request.expiry_date
@@ -48,7 +86,8 @@ class InventoryService:
         new_qty = previous_qty + quantity_units
 
         action = InventoryAction(
-            user_id=request.user_id,
+            user_id=actor_user_id,
+            warehouse_id=product.warehouse_id,
             action_type="restock",
             source=request.source,
             product_id=request.product_id,
@@ -65,42 +104,21 @@ class InventoryService:
         return action
 
     @staticmethod
-    def consume(db: Session, request: ConsumeRequest) -> InventoryAction:
-        product = db.query(Product).filter(Product.id == request.product_id).first()
-        if not product:
-            raise ValueError("Product not found")
+    def consume(db: Session, request: ConsumeRequest, *, actor_user_id: int, warehouse_id: int) -> InventoryAction:
+        product = InventoryService._get_product_scoped(db, request.product_id, warehouse_id)
 
         total_stock = InventoryService.get_total_stock(db, request.product_id)
         if total_stock < request.quantity_units:
             raise ValueError("Insufficient stock")
 
-        remaining_to_consume = request.quantity_units
-        
-        # Consume from oldest expiry first, then oldest created
-        batches = db.query(StockBatch).filter(
-            StockBatch.product_id == request.product_id,
-            StockBatch.quantity > 0
-        ).order_by(
-            StockBatch.expiry_date.asc().nullslast(),
-            StockBatch.created_at.asc()
-        ).all()
-
-        affected_batch_id = None
-
-        for batch in batches:
-            if remaining_to_consume <= 0:
-                break
-            
-            consume_from_batch = min(batch.quantity, remaining_to_consume)
-            batch.quantity -= consume_from_batch
-            remaining_to_consume -= consume_from_batch
-            affected_batch_id = batch.id # Track last affected batch
+        affected_batch_id = _consume_fefo(db, request.product_id, request.quantity_units)
 
         previous_qty = total_stock
         new_qty = total_stock - request.quantity_units
 
         action = InventoryAction(
-            user_id=request.user_id,
+            user_id=actor_user_id,
+            warehouse_id=product.warehouse_id,
             action_type="consume",
             source=request.source,
             product_id=request.product_id,
@@ -117,72 +135,36 @@ class InventoryService:
         return action
 
     @staticmethod
-    def adjust(db: Session, request: AdjustRequest) -> InventoryAction:
-        product = db.query(Product).filter(Product.id == request.product_id).first()
-        if not product:
-            raise ValueError("Product not found")
+    def adjust(db: Session, request: AdjustRequest, *, actor_user_id: int, warehouse_id: int) -> InventoryAction:
+        if request.new_total_quantity < 0:
+            raise ValueError("new_total_quantity must be non-negative")
+
+        product = InventoryService._get_product_scoped(db, request.product_id, warehouse_id)
 
         current_total = InventoryService.get_total_stock(db, request.product_id)
         delta = request.new_total_quantity - current_total
 
-        if delta == 0:
-             # No change, but maybe log it?
-             pass
-        
-        # Simple adjustment strategy: modify the first available batch or create one
         batch = db.query(StockBatch).filter(StockBatch.product_id == request.product_id).first()
-        
         if not batch:
-             # Create a default batch
-             batch = StockBatch(product_id=request.product_id, quantity=0)
-             db.add(batch)
-             db.flush()
+            batch = StockBatch(
+                product_id=request.product_id,
+                warehouse_id=product.warehouse_id,
+                quantity=0,
+            )
+            db.add(batch)
+            db.flush()
 
-        # If we need to add stock, add to this batch
-        # If we need to remove stock, remove from this batch (allow negative? Spec says non-negative on batch)
-        # But "total stock" is sum. If we set total to X, we need to adjust batches.
-        # Simplest: Add delta to the first batch. If it goes negative, we might have issues if we enforce non-negative.
-        # But let's assume for now we just add delta to the batch.
-        # A better way for negative delta: consume logic.
-        # But for "adjust", we usually just want to force a value.
-        # Let's try to add delta to batch.quantity.
-        
-        batch.quantity += delta
-        if batch.quantity < 0:
-            # If this batch goes negative, we might need to take from others?
-            # Or just allow it for now if DB allows. Spec says "quantity (integer, not-negative)".
-            # So we must ensure non-negative.
-            # If delta is negative, we should use consume logic or distribute decrement.
-            # But spec says "Adjust relevant StockBatch records (simple: create/update one batch)".
-            # If we have multiple batches, setting total to X is ambiguous.
-            # Let's just reset all batches to 0 and create one with X? No, that loses expiry info.
-            # Let's just add delta to the batch with most stock?
-            pass
-
-        # Re-implementation of adjust for safety:
         if delta > 0:
+            # Add the surplus to a single batch. Loses expiry granularity but
+            # matches the "simple adjust" contract.
             batch.quantity += delta
         elif delta < 0:
-            # We need to remove -delta.
-            to_remove = -delta
-            # Use similar logic to consume but without "consume" action type
-            batches = db.query(StockBatch).filter(StockBatch.product_id == request.product_id, StockBatch.quantity > 0).all()
-            for b in batches:
-                if to_remove <= 0: break
-                take = min(b.quantity, to_remove)
-                b.quantity -= take
-                to_remove -= take
-            
-            if to_remove > 0:
-                # Still need to remove, but no stock left?
-                # This implies current_total was wrong or race condition.
-                # Or we just force the first batch to be whatever is needed to make the sum correct?
-                # Let's just set the first batch to handle the remainder (even if negative, but we can't).
-                # If we can't satisfy, we just stop.
-                pass
+            # delta is bounded by current_total, so FEFO is guaranteed to clear.
+            _consume_fefo(db, request.product_id, -delta)
 
         action = InventoryAction(
-            user_id=request.user_id,
+            user_id=actor_user_id,
+            warehouse_id=product.warehouse_id,
             action_type="edit",
             source="manual",
             product_id=request.product_id,
@@ -199,9 +181,9 @@ class InventoryService:
         return action
 
     @staticmethod
-    def undo(db: Session, action_id: int, user_id: Optional[int]) -> InventoryAction:
+    def undo(db: Session, action_id: int, *, actor_user_id: int, warehouse_id: int) -> InventoryAction:
         original_action = db.query(InventoryAction).filter(InventoryAction.id == action_id).first()
-        if not original_action:
+        if not original_action or original_action.warehouse_id != warehouse_id:
             raise ValueError("Action not found")
         if original_action.undone:
             raise ValueError("Action already undone")
@@ -214,33 +196,41 @@ class InventoryService:
         if current_total + reverse_delta < 0:
             raise ValueError("Undo would result in negative stock")
 
-        # Apply reversal
-        # If we added stock (restock), we need to remove it.
-        # If we removed stock (consume), we need to add it back.
-        
-        # We need to find which batch to affect.
-        # Ideally we affect the same batch if possible.
+        # Reverse onto the original batch if it still exists; otherwise FEFO
+        # for negative reversals, or a fresh batch for positive ones.
         batch = db.query(StockBatch).filter(StockBatch.id == original_action.stock_batch_id).first()
-        
+
         if batch:
-             batch.quantity += reverse_delta
+            if reverse_delta < 0 and batch.quantity + reverse_delta < 0:
+                # Original batch can't absorb the entire negative reversal
+                # (someone consumed it down). Spread across FEFO batches.
+                shortfall = -(batch.quantity + reverse_delta)
+                batch.quantity = 0
+                _consume_fefo(db, original_action.product_id, shortfall)
+            else:
+                batch.quantity += reverse_delta
+        elif reverse_delta > 0:
+            # Restock-style reversal — create a fresh batch.
+            batch = StockBatch(
+                product_id=original_action.product_id,
+                warehouse_id=original_action.warehouse_id,
+                quantity=reverse_delta,
+            )
+            db.add(batch)
+            db.flush()
         else:
-             # Batch might have been deleted? Or we just pick one.
-             # Fallback to general adjust logic or find another batch.
-             # For now, fail if batch missing? Or create new.
-             batch = StockBatch(product_id=original_action.product_id, quantity=reverse_delta if reverse_delta > 0 else 0)
-             db.add(batch)
-             if reverse_delta < 0:
-                 # We need to remove from somewhere else if this batch is new/empty
-                 # This is getting complicated.
-                 pass
+            # Consume-style reversal with no original batch left: FEFO across
+            # whatever batches still exist. global non-negative guard above
+            # already proved enough stock exists.
+            _consume_fefo(db, original_action.product_id, -reverse_delta)
 
         original_action.undone = True
-        original_action.undone_at = datetime.utcnow()
-        original_action.undone_by_id = user_id
-        
+        original_action.undone_at = utc_now()
+        original_action.undone_by_id = actor_user_id
+
         new_action = InventoryAction(
-            user_id=user_id,
+            user_id=actor_user_id,
+            warehouse_id=original_action.warehouse_id,
             action_type="undo",
             source="api",
             product_id=original_action.product_id,

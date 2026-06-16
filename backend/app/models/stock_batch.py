@@ -2,6 +2,7 @@ from datetime import datetime, date
 from typing import Optional
 from sqlalchemy import Integer, ForeignKey, DateTime, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.core.time import utc_now
 from app.db.base import Base
 
 class StockBatch(Base):
@@ -13,9 +14,9 @@ class StockBatch(Base):
     location_id: Mapped[Optional[int]] = mapped_column(ForeignKey("locations.id"), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=0) # non-negative check to be enforced in logic/DB constraint
     expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
 
-    product = relationship("Product")
+    product = relationship("Product", back_populates="stock_batches")
     location = relationship("Location")
     warehouse = relationship("Warehouse")

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,11 +9,45 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:mobile/domain/providers/theme_provider.dart';
 import 'package:mobile/domain/providers/locale_provider.dart';
 import 'package:mobile/l10n/app_localizations.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:mobile/domain/services/notification_service.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    if (task == 'check_notifications') {
+      await NotificationService().init();
+      await NotificationService().checkAndShowNotifications();
+    }
+    return Future.value(true);
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await NotificationService().init();
+
+  await Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: !kReleaseMode,
+  );
+
+  await Workmanager().registerPeriodicTask(
+    "1",
+    "check_notifications",
+    frequency: const Duration(hours: 24),
+    constraints: Constraints(networkType: NetworkType.connected),
+  );
+
+  // Check immediately on startup
+  NotificationService().checkAndShowNotifications();
+
   final prefs = await SharedPreferences.getInstance();
+
+  // One-shot cleanup: pre-auth versions stored the chosen user in prefs.
+  // Identity now comes from the JWT, so the key is orphaned and can go.
+  await prefs.remove('active_user_id');
 
   runApp(
     ProviderScope(

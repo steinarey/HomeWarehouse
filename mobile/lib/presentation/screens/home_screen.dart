@@ -40,8 +40,12 @@ class HomeScreen extends ConsumerWidget {
                       child: SummaryCard(
                         title: 'Low Stock',
                         value: dashboard.lowStockCategories.toString(),
-                        color: Colors.orange.shade100,
-                        textColor: Colors.orange.shade900,
+                        color: dashboard.lowStockCategories > 0
+                            ? Colors.orange.shade100
+                            : null,
+                        textColor: dashboard.lowStockCategories > 0
+                            ? Colors.orange.shade900
+                            : null,
                         onTap: () => context.go('/low-stock'),
                       ),
                     ),
@@ -49,9 +53,14 @@ class HomeScreen extends ConsumerWidget {
                     Expanded(
                       child: SummaryCard(
                         title: 'Critical',
-                        value: dashboard.lowStockCriticalCategories.toString(),
-                        color: Colors.red.shade100,
-                        textColor: Colors.red.shade900,
+                        value:
+                            dashboard.lowStockCriticalCategories.toString(),
+                        color: dashboard.lowStockCriticalCategories > 0
+                            ? Colors.red.shade100
+                            : null,
+                        textColor: dashboard.lowStockCriticalCategories > 0
+                            ? Colors.red.shade900
+                            : null,
                         onTap: () => context.go('/low-stock'),
                       ),
                     ),

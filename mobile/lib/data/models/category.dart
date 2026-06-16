@@ -17,6 +17,8 @@ class Category {
   final int? targetStock;
   @JsonKey(name: 'nfc_tag_id')
   final String? nfcTagId;
+  @JsonKey(name: 'consumption_rate')
+  final int? consumptionRate;
 
   // These might come from summary endpoints, so they are optional
   @JsonKey(name: 'current_stock')
@@ -33,6 +35,7 @@ class Category {
     required this.minStock,
     this.targetStock,
     this.nfcTagId,
+    this.consumptionRate,
     this.currentStock,
     this.isBelowMin,
   });
@@ -40,4 +43,39 @@ class Category {
   factory Category.fromJson(Map<String, dynamic> json) =>
       _$CategoryFromJson(json);
   Map<String, dynamic> toJson() => _$CategoryToJson(this);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is Category &&
+        other.id == id &&
+        other.name == name &&
+        other.description == description &&
+        other.isCritical == isCritical &&
+        other.isOneOff == isOneOff &&
+        other.minStock == minStock &&
+        other.targetStock == targetStock &&
+        other.nfcTagId == nfcTagId &&
+        other.consumptionRate == consumptionRate &&
+        other.currentStock == currentStock &&
+        other.isBelowMin == isBelowMin;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      id,
+      name,
+      description,
+      isCritical,
+      isOneOff,
+      minStock,
+      targetStock,
+      nfcTagId,
+      consumptionRate,
+      currentStock,
+      isBelowMin,
+    );
+  }
 }

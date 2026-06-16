@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/data/models/inventory_action.dart';
 import 'package:mobile/domain/providers/core_providers.dart';
-import 'package:mobile/domain/providers/user_provider.dart';
 import 'package:mobile/l10n/app_localizations.dart';
 
 class ActivityLogScreen extends ConsumerStatefulWidget {
@@ -73,12 +72,7 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
     if (confirm != true) return;
 
     try {
-      final user = await ref.read(activeUserProvider.future);
-      if (user == null) throw Exception('No active user');
-
-      await ref
-          .read(inventoryRepositoryProvider)
-          .undoAction(action.id, user.id);
+      await ref.read(inventoryRepositoryProvider).undoAction(action.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -118,12 +112,37 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
                 AppLocalizations.of(context).get('errorLoadingActions'),
               ),
             )
-          : ListView.builder(
+          : _actions.isEmpty
+          ? RefreshIndicator(
+              onRefresh: () async => _loadActions(),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 120),
+                  Icon(
+                    Icons.history,
+                    size: 80,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      AppLocalizations.of(context).get('noActivityYet'),
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: () async => _loadActions(),
+              child: ListView.builder(
               itemCount: _actions.length,
               itemBuilder: (context, index) {
                 final action = _actions[index];
-                final isConsume = action.actionType == 'consume';
-                final color = isConsume ? Colors.orange : Colors.green;
+                final delta = action.quantityDelta;
+                final color = delta < 0 ? Colors.orange : Colors.green;
+                final sign = delta >= 0 ? '+' : '';
 
                 return ListTile(
                   title: Text(
@@ -136,7 +155,7 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${isConsume ? '-' : '+'}${action.quantityDelta}',
+                        '$sign$delta',
                         style: TextStyle(
                           color: color,
                           fontWeight: FontWeight.bold,
@@ -160,6 +179,7 @@ class _ActivityLogScreenState extends ConsumerState<ActivityLogScreen> {
                   ),
                 );
               },
+            ),
             ),
     );
   }

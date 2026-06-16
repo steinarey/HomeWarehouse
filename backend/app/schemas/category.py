@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 class CategoryBase(BaseModel):
@@ -9,6 +9,7 @@ class CategoryBase(BaseModel):
     is_one_off: bool = False
     min_stock: int = 0
     target_stock: Optional[int] = None
+    consumption_rate: Optional[int] = None
     location_id: Optional[int] = None
     nfc_tag_id: Optional[str] = None
 
@@ -22,6 +23,7 @@ class CategoryUpdate(BaseModel):
     is_one_off: Optional[bool] = None
     min_stock: Optional[int] = None
     target_stock: Optional[int] = None
+    consumption_rate: Optional[int] = None
     location_id: Optional[int] = None
     nfc_tag_id: Optional[str] = None
 
@@ -34,5 +36,4 @@ class Category(CategoryBase):
     current_stock: Optional[int] = None
     is_below_min: Optional[bool] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

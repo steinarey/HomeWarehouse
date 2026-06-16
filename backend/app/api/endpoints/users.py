@@ -4,11 +4,22 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app.models.user import User as UserModel
 from app.schemas.user import User, UserCreate, UserUpdate
+from app.schemas.warehouse_member import WarehouseMemberOut
 
 router = APIRouter()
 
+@router.get("/me", response_model=User)
+def read_current_user(current_user: UserModel = Depends(deps.get_current_user)):
+    return current_user
+
+
 @router.get("/", response_model=List[User])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(deps.get_db)):
+def read_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(deps.get_db),
+    current_user: UserModel = Depends(deps.get_current_user),
+):
     users = db.query(UserModel).offset(skip).limit(limit).all()
     return users
 
@@ -17,7 +28,7 @@ from app.core.security import get_password_hash
 from app.models.warehouse import Warehouse
 from app.models.warehouse_member import WarehouseMember
 from app.models.invite import Invite
-from datetime import datetime
+from app.core.time import utc_now
 
 @router.post("/", response_model=User)
 def create_user(user: UserCreate, db: Session = Depends(deps.get_db)):
@@ -37,25 +48,32 @@ def create_user(user: UserCreate, db: Session = Depends(deps.get_db)):
     if user.invite_code:
         invite = db.query(Invite).filter(Invite.code == user.invite_code).first()
         if not invite:
-            # Rollback user creation if invite invalid? Or just create user without warehouse?
-            # Better to fail if invite code was provided but invalid.
             db.delete(db_user)
             db.commit()
             raise HTTPException(status_code=404, detail="Invite code not found")
-        
-        if invite.expires_at < datetime.utcnow():
+
+        # Validate state before consuming. Each failure rolls back the user we
+        # just created — caller asked for invite-gated signup, not a free one.
+        if invite.revoked:
+            db.delete(db_user)
+            db.commit()
+            raise HTTPException(status_code=400, detail="Invite revoked")
+        if invite.expires_at < utc_now():
             db.delete(db_user)
             db.commit()
             raise HTTPException(status_code=400, detail="Invite code expired")
-            
+        if invite.max_uses is not None and invite.uses >= invite.max_uses:
+            db.delete(db_user)
+            db.commit()
+            raise HTTPException(status_code=400, detail="Invite exhausted")
+
         member = WarehouseMember(
             user_id=db_user.id,
             warehouse_id=invite.warehouse_id,
-            role=invite.role
+            role=invite.role,
         )
         db.add(member)
-        # Optional: Delete invite or keep it? One-time use usually means delete.
-        db.delete(invite)
+        invite.uses += 1
         db.commit()
     else:
         # Create new warehouse for user
@@ -75,58 +93,77 @@ def create_user(user: UserCreate, db: Session = Depends(deps.get_db)):
     return db_user
 
 @router.get("/{user_id}", response_model=User)
-def read_user(user_id: int, db: Session = Depends(deps.get_db)):
+def read_user(
+    user_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: UserModel = Depends(deps.get_current_user),
+):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
 @router.patch("/{user_id}", response_model=User)
-def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(deps.get_db)):
+def update_user(
+    user_id: int,
+    user_in: UserUpdate,
+    db: Session = Depends(deps.get_db),
+    current_user: UserModel = Depends(deps.get_current_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     update_data = user_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
-    
+
     db.add(user)
     db.commit()
     db.refresh(user)
     return user
 
 @router.delete("/{user_id}", response_model=User)
-def delete_user(user_id: int, db: Session = Depends(deps.get_db)):
+def delete_user(
+    user_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: UserModel = Depends(deps.get_current_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     db.delete(user)
     db.commit()
     return user
 
-@router.get("/members/list", response_model=List[Any])
+@router.get("/members/list", response_model=List[WarehouseMemberOut])
 def get_members(
     db: Session = Depends(deps.get_db),
-    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member)
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member),
 ):
-    """
-    List members of the current warehouse.
-    """
-    members = db.query(WarehouseMember).filter(WarehouseMember.warehouse_id == current_member.warehouse_id).all()
-    # Return user details with role
-    result = []
-    for m in members:
-        user = db.query(UserModel).filter(UserModel.id == m.user_id).first()
-        if user:
-            result.append({
-                "id": user.id,
-                "name": user.name,
-                "role": m.role,
-                "joined_at": m.joined_at
-            })
-    return result
+    """List members of the current warehouse."""
+    rows = (
+        db.query(WarehouseMember, UserModel)
+        .join(UserModel, UserModel.id == WarehouseMember.user_id)
+        .filter(WarehouseMember.warehouse_id == current_member.warehouse_id)
+        .all()
+    )
+    return [
+        WarehouseMemberOut(
+            id=user.id,
+            name=user.name,
+            role=member.role,
+            joined_at=member.joined_at,
+        )
+        for member, user in rows
+    ]
 
 @router.delete("/members/{user_id}", response_model=Any)
 def remove_member(

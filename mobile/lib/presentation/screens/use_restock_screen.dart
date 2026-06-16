@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:mobile/data/models/location.dart';
 import 'package:mobile/data/models/product.dart';
 import 'package:mobile/domain/providers/core_providers.dart';
-import 'package:mobile/domain/providers/user_provider.dart';
 import 'package:mobile/presentation/screens/use_restock/search_tab.dart';
 import 'package:mobile/presentation/screens/use_restock/camera_tab.dart';
 import 'package:mobile/presentation/screens/use_restock/nfc_tab.dart';
 import 'package:mobile/data/models/category.dart';
-// import 'package:mobile/domain/providers/core_providers.dart'; // Duplicate
+import 'package:mobile/l10n/app_localizations.dart';
+
+enum _ActionMode { use, restock, adjust }
 
 class UseRestockScreen extends ConsumerStatefulWidget {
   const UseRestockScreen({super.key});
@@ -19,7 +22,10 @@ class UseRestockScreen extends ConsumerStatefulWidget {
 class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isRestockMode = false; // Default to Use mode
+  _ActionMode _mode = _ActionMode.use;
+
+  bool get _isRestockMode => _mode == _ActionMode.restock;
+  bool get _isAdjustMode => _mode == _ActionMode.adjust;
 
   @override
   void initState() {
@@ -33,115 +39,247 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
     super.dispose();
   }
 
-  void _toggleMode() {
-    setState(() {
-      _isRestockMode = !_isRestockMode;
-    });
-  }
+  void _setMode(_ActionMode m) => setState(() => _mode = m);
 
   void _onProductSelected(Product product) {
     _showActionBottomSheet(product);
   }
 
   Future<void> _showActionBottomSheet(Product product) async {
-    // Clear previous undo state when starting a new action
     setState(() {
       _lastActionId = null;
     });
 
-    final quantityController = TextEditingController(text: '1');
     final isRestock = _isRestockMode;
+    final isAdjust = _isAdjustMode;
+    final quantityController = TextEditingController(text: isAdjust ? '0' : '1');
+
+    // Restock-only fields. Loaded lazily once the sheet is shown.
+    Location? selectedLocation;
+    DateTime? expiryDate;
+    List<Location> locations = const [];
+    if (isRestock) {
+      try {
+        locations = await ref.read(apiClientProvider).getLocations();
+      } catch (_) {
+        locations = const [];
+      }
+    }
+    if (!mounted) return;
 
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          left: 16,
-          right: 16,
-          top: 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              isRestock ? 'Restock ${product.name}' : 'Use ${product.name}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text('Package size: ${product.packageSize}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: quantityController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: isRestock
-                    ? 'Quantity (Packages)'
-                    : 'Quantity (Units)',
-                border: const OutlineInputBorder(),
-                helperText: isRestock
-                    ? 'Adding ${product.packageSize} units per package'
-                    : 'Removing individual units',
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isRestock ? Colors.green : Colors.orange,
-                      foregroundColor: Colors.white,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      isAdjust
+                          ? '${AppLocalizations.of(context).get('adjustAction')} ${product.name}'
+                          : isRestock
+                              ? '${AppLocalizations.of(context).get('restockAction')} ${product.name}'
+                              : '${AppLocalizations.of(context).get('useAction')} ${product.name}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    onPressed: () async {
-                      final qty = int.tryParse(quantityController.text);
-                      if (qty == null || qty <= 0) return;
-
-                      Navigator.pop(context);
-                      await _performAction(product, qty);
-                    },
-                    child: Text(isRestock ? 'Restock' : 'Use'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.inventory_2_outlined),
+                    tooltip: AppLocalizations.of(context).get('viewLocations'),
+                    onPressed: () => _showStockBatchesSheet(product),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${AppLocalizations.of(context).get('packageSize')}: ${product.packageSize}',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: quantityController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: isAdjust
+                      ? AppLocalizations.of(context).get('newTotalQuantity')
+                      : isRestock
+                          ? AppLocalizations.of(context).get('quantityPackages')
+                          : AppLocalizations.of(context).get('quantityUnits'),
+                  border: const OutlineInputBorder(),
+                  helperText: isAdjust
+                      ? AppLocalizations.of(context).get('adjustHint')
+                      : isRestock
+                          ? '${AppLocalizations.of(context).get('addingUnitsHint').replaceFirst('{size}', product.packageSize.toString())} ${product.packageSize} ${AppLocalizations.of(context).get('unitsOf')}'
+                          : AppLocalizations.of(context).get('removingUnitsHint'),
+                ),
+                autofocus: true,
+              ),
+              if (isRestock) ...[
+                const SizedBox(height: 16),
+                DropdownButtonFormField<Location?>(
+                  initialValue: selectedLocation,
+                  decoration: const InputDecoration(
+                    labelText: 'Location (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem<Location?>(
+                      value: null,
+                      child: Text('Unspecified'),
+                    ),
+                    ...locations.map(
+                      (l) => DropdownMenuItem(value: l, child: Text(l.label)),
+                    ),
+                  ],
+                  onChanged: (val) =>
+                      setSheetState(() => selectedLocation = val),
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: expiryDate ?? DateTime.now().add(
+                        const Duration(days: 30),
+                      ),
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 1),
+                      ),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 5),
+                      ),
+                    );
+                    if (picked != null) {
+                      setSheetState(() => expiryDate = picked);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Expiry date (optional)',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(
+                      expiryDate == null
+                          ? 'None'
+                          : DateFormat.yMMMd().format(expiryDate!),
+                    ),
                   ),
                 ),
+                if (expiryDate != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () =>
+                          setSheetState(() => expiryDate = null),
+                      child: const Text('Clear expiry'),
+                    ),
+                  ),
               ],
-            ),
-          ],
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(AppLocalizations.of(context).get('cancel')),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isAdjust
+                            ? Colors.blueGrey
+                            : isRestock
+                                ? Colors.green
+                                : Colors.orange,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () async {
+                        final qty = int.tryParse(quantityController.text);
+                        if (qty == null) return;
+                        if (!isAdjust && qty <= 0) return;
+                        if (isAdjust && qty < 0) return;
+
+                        Navigator.pop(context);
+                        await _performAction(
+                          product,
+                          qty,
+                          locationId: selectedLocation?.id,
+                          expiryDate: expiryDate,
+                        );
+                      },
+                      child: Text(
+                        isAdjust
+                            ? AppLocalizations.of(context).get('adjustAction')
+                            : isRestock
+                                ? AppLocalizations.of(context).get('restockAction')
+                                : AppLocalizations.of(context).get('useAction'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _performAction(Product product, int quantity) async {
+  Future<void> _performAction(
+    Product product,
+    int quantity, {
+    int? locationId,
+    DateTime? expiryDate,
+  }) async {
     try {
-      final user = await ref.read(activeUserProvider.future);
-      if (user == null) throw Exception('No active user');
-
       final repo = ref.read(inventoryRepositoryProvider);
       int? actionId;
 
-      if (_isRestockMode) {
-        final action = await repo.restock(
+      if (_isAdjustMode) {
+        final action = await repo.adjust(
           productId: product.id,
-          quantityPackages: quantity,
-          userId: user.id,
-          source: 'manual', // Update source based on tab
+          newTotalQuantity: quantity,
         );
         actionId = action.id;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Restocked ${quantity * product.packageSize} units of ${product.name}',
+                '${AppLocalizations.of(context).get('adjustedMessage')} ${product.name} → $quantity',
+              ),
+            ),
+          );
+        }
+      } else if (_isRestockMode) {
+        final action = await repo.restock(
+          productId: product.id,
+          quantityPackages: quantity,
+          locationId: locationId,
+          expiryDate: expiryDate,
+          source: 'manual',
+        );
+        actionId = action.id;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${AppLocalizations.of(context).get('restockedMessage')} ${quantity * product.packageSize} ${AppLocalizations.of(context).get('unitsOf')} ${product.name}',
               ),
             ),
           );
@@ -149,14 +287,17 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
       } else {
         final action = await repo.consume(
           productId: product.id,
-          quantityUnits: quantity, // Assuming input is units for consume
-          userId: user.id,
+          quantityUnits: quantity,
           source: 'manual',
         );
         actionId = action.id;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Used $quantity units of ${product.name}')),
+            SnackBar(
+              content: Text(
+                '${AppLocalizations.of(context).get('usedMessage')} $quantity ${AppLocalizations.of(context).get('unitsOf')} ${product.name}',
+              ),
+            ),
           );
         }
       }
@@ -167,7 +308,12 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context).get('errorMessage')}: $e',
+            ),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -200,18 +346,21 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'New Product',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                AppLocalizations.of(context).get('newProduct'),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
-              Text('Barcode: $barcode'),
+              Text('${AppLocalizations.of(context).get('barcode')}: $barcode'),
               const SizedBox(height: 16),
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Product Name',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).get('productName'),
+                  border: const OutlineInputBorder(),
                 ),
                 autofocus: true,
               ),
@@ -220,10 +369,10 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<Category>(
-                      value: selectedCategory,
-                      decoration: const InputDecoration(
-                        labelText: 'Category',
-                        border: OutlineInputBorder(),
+                      initialValue: selectedCategory,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).get('category'),
+                        border: const OutlineInputBorder(),
                       ),
                       items: categories
                           .map(
@@ -255,7 +404,7 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
                       }
                     },
                     icon: const Icon(Icons.add_circle_outline),
-                    tooltip: 'Create Category',
+                    tooltip: AppLocalizations.of(context).get('createCategory'),
                   ),
                 ],
               ),
@@ -263,9 +412,9 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
               TextField(
                 controller: pkgSizeController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Package Size',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).get('packageSize'),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 24),
@@ -292,11 +441,17 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
                     }
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error creating product: $e')),
+                      SnackBar(
+                        content: Text(
+                          '${AppLocalizations.of(context).get('errorCreatingProduct')}: $e',
+                        ),
+                      ),
                     );
                   }
                 },
-                child: const Text('Create & Continue'),
+                child: Text(
+                  AppLocalizations.of(context).get('createAndContinue'),
+                ),
               ),
             ],
           ),
@@ -309,36 +464,51 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
     final nameController = TextEditingController();
     final descController = TextEditingController();
     final minStockController = TextEditingController(text: '0');
+    final consumptionRateController = TextEditingController();
 
     return showDialog<Category>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('New Category'),
+        title: Text(AppLocalizations.of(context).get('newCategory')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).get('name'),
+              ),
               autofocus: true,
             ),
             const SizedBox(height: 8),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: 'Description'),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).get('description'),
+              ),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: minStockController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Minimum Stock'),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).get('minStock'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: consumptionRateController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).get('consumptionRate'),
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).get('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -350,6 +520,9 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
                       'name': nameController.text,
                       'description': descController.text,
                       'min_stock': int.tryParse(minStockController.text) ?? 0,
+                      'consumption_rate': int.tryParse(
+                        consumptionRateController.text,
+                      ),
                     });
                 if (context.mounted) {
                   Navigator.pop(context, newCategory);
@@ -358,7 +531,7 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
                 // Handle error
               }
             },
-            child: const Text('Create'),
+            child: Text(AppLocalizations.of(context).get('create')),
           ),
         ],
       ),
@@ -369,45 +542,65 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Listen to tab changes to reset state when leaving this screen
-    ref.listen(bottomNavIndexProvider, (previous, next) {
-      if (next != 1) {
-        setState(() {
-          _lastActionId = null;
-          // Optionally reset to default mode if desired, but user said "reset... default state"
-          // which might mean just clearing the undo button and temporary stuff.
-          // _isRestockMode = false;
-        });
-      }
-    });
-
-    // final colorScheme = Theme.of(context).colorScheme;
-    final modeColor = _isRestockMode ? Colors.green : Colors.orange;
+    final modeColor = _isAdjustMode
+        ? Colors.blueGrey
+        : _isRestockMode
+            ? Colors.green
+            : Colors.orange;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isRestockMode ? 'Restock Mode' : 'Use Mode'),
+        title: SegmentedButton<_ActionMode>(
+          showSelectedIcon: false,
+          style: SegmentedButton.styleFrom(
+            backgroundColor: Colors.white.withValues(alpha: 0.15),
+            selectedBackgroundColor: Colors.white,
+            selectedForegroundColor: modeColor,
+            foregroundColor: Colors.white,
+          ),
+          segments: [
+            ButtonSegment(
+              value: _ActionMode.use,
+              icon: const Icon(Icons.remove_circle_outline),
+              label: Text(AppLocalizations.of(context).get('useMode')),
+            ),
+            ButtonSegment(
+              value: _ActionMode.restock,
+              icon: const Icon(Icons.add_circle_outline),
+              label: Text(AppLocalizations.of(context).get('restockMode')),
+            ),
+            ButtonSegment(
+              value: _ActionMode.adjust,
+              icon: const Icon(Icons.tune),
+              label: Text(AppLocalizations.of(context).get('adjustMode')),
+            ),
+          ],
+          selected: {_mode},
+          onSelectionChanged: (set) {
+            if (set.first != _mode) _setMode(set.first);
+          },
+        ),
+        centerTitle: true,
         backgroundColor: modeColor,
         foregroundColor: Colors.white,
-        actions: [
-          Switch(
-            value: _isRestockMode,
-            onChanged: (val) => _toggleMode(),
-            activeThumbColor: Colors.white,
-            activeTrackColor: Colors.green.shade700,
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: Colors.orange.shade700,
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
-          tabs: const [
-            Tab(icon: Icon(Icons.qr_code), text: 'Scan'),
-            Tab(icon: Icon(Icons.nfc), text: 'NFC'),
-            Tab(icon: Icon(Icons.search), text: 'Search'),
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.qr_code),
+              text: AppLocalizations.of(context).get('scan'),
+            ),
+            Tab(
+              icon: const Icon(Icons.nfc),
+              text: AppLocalizations.of(context).get('nfc'),
+            ),
+            Tab(
+              icon: const Icon(Icons.search),
+              text: AppLocalizations.of(context).get('search'),
+            ),
           ],
         ),
       ),
@@ -426,9 +619,11 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
                 _showCreateProductSheet(barcode);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text(
-                      'Product not found. Switch to Restock mode to add it.',
+                      AppLocalizations.of(
+                        context,
+                      ).get('productNotFoundRestockHint'),
                     ),
                     backgroundColor: Colors.orange,
                   ),
@@ -451,7 +646,7 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
       floatingActionButton: _lastActionId != null
           ? FloatingActionButton.extended(
               onPressed: _undoLastAction,
-              label: const Text('Undo Last Action'),
+              label: Text(AppLocalizations.of(context).get('undoLastAction')),
               icon: const Icon(Icons.undo),
               backgroundColor: Colors.grey[800],
               foregroundColor: Colors.white,
@@ -460,15 +655,81 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
     );
   }
 
+  Future<void> _showStockBatchesSheet(Product product) async {
+    final l10n = AppLocalizations.of(context);
+    List<Map<String, dynamic>>? batches;
+    try {
+      batches = await ref
+          .read(apiClientProvider)
+          .getProductStockBatches(product.id);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                '${l10n.get('stockLocationsFor')} ${product.name}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (batches!.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: Text(l10n.get('noStockOnHand'))),
+                )
+              else
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5,
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: batches.length,
+                    itemBuilder: (context, index) {
+                      final b = batches![index];
+                      final loc = b['location_label'] as String?;
+                      final exp = b['expiry_date'] as String?;
+                      return ListTile(
+                        leading: CircleAvatar(child: Text('${b['quantity']}')),
+                        title: Text(loc ?? l10n.get('unspecifiedLocation')),
+                        subtitle: exp == null
+                            ? null
+                            : Text('${l10n.get('expiresAt')} $exp'),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _undoLastAction() async {
     if (_lastActionId == null) return;
 
     try {
-      final user = await ref.read(activeUserProvider.future);
-      if (user == null) return;
-
       final repo = ref.read(inventoryRepositoryProvider);
-      await repo.undoAction(_lastActionId!, user.id);
+      await repo.undoAction(_lastActionId!);
 
       setState(() {
         _lastActionId = null;
@@ -476,32 +737,89 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Action undone successfully')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).get('actionUndone')),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error undoing action: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).get('errorUndoingAction'),
+            ),
+          ),
+        );
       }
     }
   }
 
   Future<void> _showCategoryProductSheet(Category category) async {
-    // Fetch products for category
-    // Since I don't have getProductsByCategory in repo yet (only search), I'll use search with empty query and filter locally or add endpoint support.
-    // Actually ApiClient has getProducts({query}), but backend supports filtering?
-    // Backend `GET /products` doesn't seem to support category_id filter in the code I saw earlier.
-    // `backend/app/api/endpoints/products.py` -> `read_products` only has skip/limit.
-    // So I might need to fetch all and filter, or just rely on search.
-    // For now, I'll just show a message or redirect to search.
+    if (!mounted) return;
 
-    _tabController.animateTo(2); // Switch to search
-    // Ideally pre-fill search with category name?
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Category: ${category.name}. Please search for product.'),
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.5,
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Text(
+              '${category.name} ${AppLocalizations.of(context).get('products')}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder<List<Product>>(
+                future: ref.read(productRepositoryProvider).getProducts(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        '${AppLocalizations.of(context).get('errorMessage')}: ${snapshot.error}',
+                      ),
+                    );
+                  }
+
+                  final products = snapshot.data ?? [];
+                  final categoryProducts = products
+                      .where((p) => p.categoryId == category.id)
+                      .toList();
+
+                  if (categoryProducts.isEmpty) {
+                    return Center(
+                      child: Text(
+                        AppLocalizations.of(context).get('noProductsFound'),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: categoryProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = categoryProducts[index];
+                      return ListTile(
+                        title: Text(product.name),
+                        subtitle: Text(
+                          '${AppLocalizations.of(context).get('packageSize')}: ${product.packageSize}',
+                        ),
+                        onTap: () {
+                          Navigator.pop(context); // Close list sheet
+                          _showActionBottomSheet(product);
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:mobile/config/app_constants.dart';
 import 'package:mobile/domain/providers/core_providers.dart';
 import 'package:mobile/domain/providers/user_provider.dart';
@@ -7,7 +9,6 @@ import 'package:mobile/domain/providers/auth_provider.dart';
 import 'package:mobile/domain/providers/theme_provider.dart';
 import 'package:mobile/domain/providers/locale_provider.dart';
 import 'package:mobile/l10n/app_localizations.dart';
-import 'package:mobile/presentation/screens/user_management_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -49,8 +50,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final activeUserAsync = ref.watch(activeUserProvider);
-    final usersAsync = ref.watch(usersProvider);
+    final currentUserAsync = ref.watch(currentUserProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(AppLocalizations.of(context).get('settings'))),
@@ -80,30 +80,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          activeUserAsync.when(
-            data: (activeUser) => usersAsync.when(
-              data: (users) => DropdownButtonFormField<int>(
-                initialValue: activeUser?.id,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).get('currentUser'),
-                  border: const OutlineInputBorder(),
-                ),
-                items: users
-                    .map(
-                      (u) => DropdownMenuItem(value: u.id, child: Text(u.name)),
-                    )
-                    .toList(),
-                onChanged: (val) async {
-                  if (val != null) {
-                    final user = users.firstWhere((u) => u.id == val);
-                    await ref.read(activeUserProvider.notifier).setUser(user);
-                  }
-                },
-              ),
-              loading: () => const CircularProgressIndicator(),
-              error: (e, s) => Text('Error loading users: $e'),
+          currentUserAsync.when(
+            data: (user) => ListTile(
+              leading: CircleAvatar(child: Text(user.name[0].toUpperCase())),
+              title: Text(user.name),
+              subtitle: Text(user.role),
             ),
-            loading: () => const CircularProgressIndicator(),
+            loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, s) => Text('Error: $e'),
           ),
           const Divider(height: 32),
@@ -171,14 +154,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: Text(
               AppLocalizations.of(context).get('inviteUsersAndRoles'),
             ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const UserManagementScreen(),
-                ),
-              );
-            },
+            onTap: () => context.push('/settings/users'),
           ),
           const Divider(height: 32),
           Text(
@@ -186,9 +162,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          ListTile(
-            title: Text(AppLocalizations.of(context).get('version')),
-            subtitle: const Text('1.0.0'),
+          FutureBuilder<PackageInfo>(
+            future: PackageInfo.fromPlatform(),
+            builder: (context, snapshot) {
+              final info = snapshot.data;
+              final subtitle = info == null
+                  ? '…'
+                  : '${info.version}+${info.buildNumber}';
+              return ListTile(
+                title: Text(AppLocalizations.of(context).get('version')),
+                subtitle: Text(subtitle),
+              );
+            },
           ),
           const Divider(height: 32),
           SizedBox(

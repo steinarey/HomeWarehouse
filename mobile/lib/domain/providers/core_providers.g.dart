@@ -23,7 +23,7 @@ final sharedPreferencesProvider = Provider<SharedPreferences>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SharedPreferencesRef = ProviderRef<SharedPreferences>;
-String _$dioHash() => r'8ddf37c8d98b2253aedaf0d7cfdc29cd1039a6a1';
+String _$dioHash() => r'c02c2afe0b6a5ae687eae3e35e2d0026bb8faec1';
 
 /// See also [dio].
 @ProviderFor(dio)
@@ -57,7 +57,7 @@ final apiClientProvider = Provider<ApiClient>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ApiClientRef = ProviderRef<ApiClient>;
-String _$userRepositoryHash() => r'262515d700fa5d1392d01ec1260f354bfee1ccbf';
+String _$userRepositoryHash() => r'e6477cea0168338fe53e141b9f2fc0b2eb59c09f';
 
 /// See also [userRepository].
 @ProviderFor(userRepository)

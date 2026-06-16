@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:mobile/data/models/product.dart';
@@ -26,6 +27,7 @@ class _CameraTabState extends ConsumerState<CameraTab>
     detectionSpeed: DetectionSpeed.noDuplicates,
   );
   bool _isProcessing = false;
+  bool _torchOn = false;
 
   @override
   void dispose() {
@@ -39,8 +41,8 @@ class _CameraTabState extends ConsumerState<CameraTab>
     if (barcode == null) return;
 
     setState(() => _isProcessing = true);
-    // Pause camera while processing
     await _controller.stop();
+    HapticFeedback.mediumImpact();
 
     try {
       final product = await ref
@@ -49,6 +51,7 @@ class _CameraTabState extends ConsumerState<CameraTab>
 
       if (mounted) {
         if (product != null) {
+          HapticFeedback.heavyImpact();
           widget.onProductFound(product);
         } else {
           widget.onUnknownBarcode(barcode);
@@ -63,9 +66,13 @@ class _CameraTabState extends ConsumerState<CameraTab>
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
-        // Resume camera if needed (usually handled by parent after action)
       }
     }
+  }
+
+  Future<void> _toggleTorch() async {
+    await _controller.toggleTorch();
+    setState(() => _torchOn = !_torchOn);
   }
 
   @override
@@ -87,6 +94,22 @@ class _CameraTabState extends ConsumerState<CameraTab>
           ),
         ),
         if (_isProcessing) const Center(child: CircularProgressIndicator()),
+        Positioned(
+          top: 16,
+          right: 16,
+          child: Material(
+            color: Colors.black54,
+            shape: const CircleBorder(),
+            child: IconButton(
+              icon: Icon(
+                _torchOn ? Icons.flash_on : Icons.flash_off,
+                color: Colors.white,
+              ),
+              tooltip: 'Torch',
+              onPressed: _toggleTorch,
+            ),
+          ),
+        ),
         Positioned(
           bottom: 32,
           left: 0,

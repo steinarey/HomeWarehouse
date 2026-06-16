@@ -61,7 +61,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _confirmPasswordController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: AppLocalizations.of(
                       context,
                     ).get('confirmPassword'),
@@ -70,8 +70,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   obscureText: true,
                   validator: (value) {
-                    if (value?.isEmpty ?? true)
+                    if (value?.isEmpty ?? true) {
                       return AppLocalizations.of(context).get('required');
+                    }
                     if (value != _passwordController.text) {
                       return AppLocalizations.of(
                         context,
@@ -108,7 +109,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         )
                       : Text(
                           AppLocalizations.of(context).get('createAccount'),
-                          style: TextStyle(fontSize: 16),
+                          style: const TextStyle(fontSize: 16),
                         ),
                 ),
               ],

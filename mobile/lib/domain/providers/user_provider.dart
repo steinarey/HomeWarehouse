@@ -9,15 +9,8 @@ Future<List<User>> users(UsersRef ref) {
   return ref.watch(userRepositoryProvider).getUsers();
 }
 
+/// The authenticated user (from /users/me). Driven by the JWT, not local prefs.
 @Riverpod(keepAlive: true)
-class ActiveUser extends _$ActiveUser {
-  @override
-  FutureOr<User?> build() async {
-    return ref.watch(userRepositoryProvider).getActiveUser();
-  }
-
-  Future<void> setUser(User user) async {
-    await ref.read(userRepositoryProvider).setActiveUser(user);
-    state = AsyncData(user);
-  }
+Future<User> currentUser(CurrentUserRef ref) {
+  return ref.watch(userRepositoryProvider).getCurrentUser();
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/data/models/product.dart';
@@ -19,54 +21,51 @@ class SearchTab extends ConsumerStatefulWidget {
 
 class _SearchTabState extends ConsumerState<SearchTab> {
   final _searchController = TextEditingController();
-  List<Product> _allProducts = [];
-  List<Product> _filteredResults = [];
+  List<Product> _results = [];
   bool _isLoading = false;
+  Timer? _debounce;
+  int _requestSeq = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetchAllProducts();
+    _runQuery(null);
   }
 
-  Future<void> _fetchAllProducts() async {
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _runQuery(value.trim().isEmpty ? null : value.trim());
+    });
+  }
+
+  Future<void> _runQuery(String? query) async {
+    final seq = ++_requestSeq;
     setState(() => _isLoading = true);
     try {
       final products = await ref
           .read(productRepositoryProvider)
-          .getProducts(); // Fetch all (no query)
-      if (mounted) {
-        setState(() {
-          _allProducts = products;
-          _filteredResults = products;
-        });
-      }
+          .getProducts(query: query);
+      // Drop stale results if a newer query has been issued.
+      if (!mounted || seq != _requestSeq) return;
+      setState(() => _results = products);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading products: $e')));
-      }
+      if (!mounted || seq != _requestSeq) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading products: $e')),
+      );
     } finally {
-      if (mounted) {
+      if (mounted && seq == _requestSeq) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _filterProducts(String query) {
-    if (query.isEmpty) {
-      setState(() => _filteredResults = _allProducts);
-      return;
-    }
-
-    final lowerQuery = query.toLowerCase();
-    setState(() {
-      _filteredResults = _allProducts.where((p) {
-        return p.name.toLowerCase().contains(lowerQuery) ||
-            (p.barcode?.contains(lowerQuery) ?? false);
-      }).toList();
-    });
   }
 
   @override
@@ -94,18 +93,18 @@ class _SearchTabState extends ConsumerState<SearchTab> {
                       icon: const Icon(Icons.clear),
                       onPressed: () {
                         _searchController.clear();
-                        _filterProducts('');
+                        _onChanged('');
                       },
                     ),
             ),
-            onChanged: _filterProducts,
+            onChanged: _onChanged,
           ),
         ),
         Expanded(
           child: ListView.builder(
-            itemCount: _filteredResults.length,
+            itemCount: _results.length,
             itemBuilder: (context, index) {
-              final product = _filteredResults[index];
+              final product = _results[index];
               return ListTile(
                 title: Text(product.name),
                 subtitle: Text(

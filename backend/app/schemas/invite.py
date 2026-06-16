@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional  # noqa: F401 (used in Invite below)
+from pydantic import BaseModel, ConfigDict
 
 class InviteBase(BaseModel):
     role: str = "user"
 
 class InviteCreate(InviteBase):
-    pass
+    max_uses: Optional[int] = None
 
 class Invite(InviteBase):
     id: int
@@ -15,6 +15,8 @@ class Invite(InviteBase):
     created_by_user_id: int
     expires_at: datetime
     created_at: datetime
+    max_uses: Optional[int] = None
+    uses: int = 0
+    revoked: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

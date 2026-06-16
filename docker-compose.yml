@@ -22,6 +22,9 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+psycopg2://inventory_user:password@db:5432/inventory
+      # Dev-only secret. Production deploys MUST override JWT_SECRET_KEY with a
+      # high-entropy value (e.g. `openssl rand -hex 32`) via the runtime env.
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-only-not-for-production-change-me}
     volumes:
       - ./backend:/app
 

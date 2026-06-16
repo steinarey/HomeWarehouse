@@ -26,8 +26,7 @@ class _NFCTabState extends ConsumerState<NFCTab> {
   bool _isScanning = false;
   String? _nfcError;
   bool _isSetupMode = false;
-  Category? _selectedCategoryForBinding;
-
+  int? _selectedCategoryIdForBinding;
   @override
   void dispose() {
     NfcManager.instance.stopSession();
@@ -116,8 +115,12 @@ class _NFCTabState extends ConsumerState<NFCTab> {
         try {
           final category = categories.firstWhere((c) => c.id == catId);
           if (mounted) {
-            widget.onCategoryFound(category);
             _stopScan();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                widget.onCategoryFound(category);
+              }
+            });
           }
         } catch (e) {
           _showError('Category not found');
@@ -129,7 +132,7 @@ class _NFCTabState extends ConsumerState<NFCTab> {
   }
 
   Future<void> _handleSetupMode(Ndef ndef) async {
-    if (_selectedCategoryForBinding == null) {
+    if (_selectedCategoryIdForBinding == null) {
       _showError('Select a category first');
       return;
     }
@@ -140,7 +143,7 @@ class _NFCTabState extends ConsumerState<NFCTab> {
     }
 
     final record = _createNdefTextRecord(
-      'cat:${_selectedCategoryForBinding!.id}',
+      'cat:${_selectedCategoryIdForBinding}',
     );
     final message = NdefMessage(records: [record]);
 
@@ -149,14 +152,16 @@ class _NFCTabState extends ConsumerState<NFCTab> {
 
       // Update backend with dummy tag ID for now
       await ref.read(categoryRepositoryProvider).updateCategory(
-        _selectedCategoryForBinding!.id,
+        _selectedCategoryIdForBinding!,
         {'nfc_tag_id': 'tag_${DateTime.now().millisecondsSinceEpoch}'},
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Bound tag to ${_selectedCategoryForBinding!.name}'),
+            content: Text(
+              'Bound tag to category #$_selectedCategoryIdForBinding',
+            ),
           ),
         );
         _stopScan();
@@ -167,7 +172,7 @@ class _NFCTabState extends ConsumerState<NFCTab> {
   }
 
   NdefRecord _createNdefTextRecord(String text) {
-    final languageCode = 'en';
+    const languageCode = 'en';
     final languageCodeBytes = utf8.encode(languageCode);
     final textBytes = utf8.encode(text);
 
@@ -256,16 +261,17 @@ class _NFCTabState extends ConsumerState<NFCTab> {
               future: ref.watch(categoryRepositoryProvider).getCategories(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const CircularProgressIndicator();
-                return DropdownButton<Category>(
+                return DropdownButton<int>(
                   hint: const Text('Select Category to Bind'),
-                  value: _selectedCategoryForBinding,
+                  value: _selectedCategoryIdForBinding,
                   items: snapshot.data!
                       .map(
-                        (c) => DropdownMenuItem(value: c, child: Text(c.name)),
+                        (c) =>
+                            DropdownMenuItem(value: c.id, child: Text(c.name)),
                       )
                       .toList(),
                   onChanged: (val) =>
-                      setState(() => _selectedCategoryForBinding = val),
+                      setState(() => _selectedCategoryIdForBinding = val),
                 );
               },
             ),

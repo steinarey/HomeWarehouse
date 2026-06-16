@@ -33,7 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const Icon(Icons.warehouse, size: 80, color: Colors.blue),
                 const SizedBox(height: 32),
                 Text(
-                  AppLocalizations.of(context).get('homeWarehouse'),
+                  AppLocalizations.of(context).get('appTitle'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 28,

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:mobile/data/models/user.dart';
 import 'package:mobile/data/models/category.dart';
+import 'package:mobile/data/models/location.dart';
 import 'package:mobile/data/models/product.dart';
 import 'package:mobile/data/models/inventory_action.dart';
 import 'package:mobile/data/models/dashboard_summary.dart';
@@ -68,7 +69,8 @@ class ApiClient {
   Future<InventoryAction> restock({
     required int productId,
     required int quantityPackages,
-    required int userId,
+    int? locationId,
+    DateTime? expiryDate,
     String source = 'manual',
   }) async {
     final response = await _dio.post(
@@ -76,17 +78,42 @@ class ApiClient {
       data: {
         'product_id': productId,
         'quantity_packages': quantityPackages,
-        'user_id': userId,
+        if (locationId != null) 'location_id': locationId,
+        if (expiryDate != null)
+          'expiry_date':
+              '${expiryDate.year.toString().padLeft(4, '0')}-${expiryDate.month.toString().padLeft(2, '0')}-${expiryDate.day.toString().padLeft(2, '0')}',
         'source': source,
       },
     );
     return InventoryAction.fromJson(response.data);
   }
 
+  Future<InventoryAction> adjust({
+    required int productId,
+    required int newTotalQuantity,
+    String reason = 'manual_correction',
+  }) async {
+    final response = await _dio.post(
+      '/inventory/adjust',
+      data: {
+        'product_id': productId,
+        'new_total_quantity': newTotalQuantity,
+        'reason': reason,
+      },
+    );
+    return InventoryAction.fromJson(response.data);
+  }
+
+  Future<List<Map<String, dynamic>>> getProductStockBatches(
+    int productId,
+  ) async {
+    final response = await _dio.get('/products/$productId/stock-batches');
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
   Future<InventoryAction> consume({
     required int productId,
     required int quantityUnits,
-    required int userId,
     String source = 'manual',
   }) async {
     final response = await _dio.post(
@@ -94,19 +121,30 @@ class ApiClient {
       data: {
         'product_id': productId,
         'quantity_units': quantityUnits,
-        'user_id': userId,
         'source': source,
       },
     );
     return InventoryAction.fromJson(response.data);
   }
 
-  Future<InventoryAction> undoAction(int actionId, int userId) async {
-    final response = await _dio.post(
-      '/inventory/undo/$actionId',
-      queryParameters: {'user_id': userId},
-    );
+  Future<InventoryAction> undoAction(int actionId) async {
+    final response = await _dio.post('/inventory/undo/$actionId');
     return InventoryAction.fromJson(response.data);
+  }
+
+  Future<User> getCurrentUser() async {
+    final response = await _dio.get('/users/me');
+    return User.fromJson(response.data);
+  }
+
+  Future<List<Location>> getLocations() async {
+    final response = await _dio.get('/locations/');
+    return (response.data as List).map((e) => Location.fromJson(e)).toList();
+  }
+
+  Future<Location> createLocation(Map<String, dynamic> data) async {
+    final response = await _dio.post('/locations/', data: data);
+    return Location.fromJson(response.data);
   }
 
   Future<List<InventoryAction>> getActions({

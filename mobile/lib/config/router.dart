@@ -11,6 +11,7 @@ import 'package:mobile/presentation/screens/onboarding_screen.dart';
 import 'package:mobile/presentation/screens/categories_screen.dart';
 import 'package:mobile/presentation/screens/login_screen.dart';
 import 'package:mobile/presentation/screens/register_screen.dart';
+import 'package:mobile/presentation/screens/user_management_screen.dart';
 import 'package:mobile/domain/providers/auth_provider.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -95,6 +96,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/settings',
                 builder: (context, state) => const SettingsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'users',
+                    builder: (context, state) => const UserManagementScreen(),
+                  ),
+                ],
               ),
             ],
           ),

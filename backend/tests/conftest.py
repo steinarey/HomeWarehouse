@@ -1,3 +1,9 @@
+import os
+
+# Settings requires JWT_SECRET_KEY at import-time. Set a fixed test value before
+# any app module is imported so the Settings model validates successfully.
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
+
 import pytest
 from typing import Generator
 from fastapi.testclient import TestClient

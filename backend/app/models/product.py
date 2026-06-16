@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, Any
 from sqlalchemy import String, Integer, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.core.time import utc_now
 from app.db.base import Base
 
 class Product(Base):
@@ -15,8 +16,13 @@ class Product(Base):
     package_size: Mapped[int] = mapped_column(Integer, default=1)
     photo_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     product_metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
 
-    category = relationship("Category")
+    category = relationship("Category", back_populates="products")
     warehouse = relationship("Warehouse")
+    stock_batches = relationship(
+        "StockBatch",
+        cascade="all, delete-orphan",
+        passive_deletes=False,
+    )

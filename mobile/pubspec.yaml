@@ -1,5 +1,5 @@
 name: mobile
-description: "A new Flutter project."
+description: "PantryKeeper: Your personal home inventory and shopping assistant."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -50,6 +50,9 @@ dependencies:
   hooks_riverpod: ^2.5.1
   nfc_manager_ndef: ^1.1.0
   ndef_record: ^1.4.0
+  flutter_local_notifications: ^19.5.0
+  workmanager: ^0.9.0+3
+  package_info_plus: ^8.0.0
 
 dev_dependencies:
   flutter_test:

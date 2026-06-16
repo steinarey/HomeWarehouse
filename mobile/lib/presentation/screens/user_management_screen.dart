@@ -69,7 +69,7 @@ class UserManagementScreen extends ConsumerWidget {
                 Text(AppLocalizations.of(context).get('generateInviteCode')),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: selectedRole,
+                  initialValue: selectedRole,
                   decoration: InputDecoration(
                     labelText: AppLocalizations.of(context).get('role'),
                     border: const OutlineInputBorder(),

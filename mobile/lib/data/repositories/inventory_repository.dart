@@ -15,13 +15,15 @@ class InventoryRepository {
   Future<InventoryAction> restock({
     required int productId,
     required int quantityPackages,
-    required int userId,
+    int? locationId,
+    DateTime? expiryDate,
     String source = 'manual',
   }) {
     return _apiClient.restock(
       productId: productId,
       quantityPackages: quantityPackages,
-      userId: userId,
+      locationId: locationId,
+      expiryDate: expiryDate,
       source: source,
     );
   }
@@ -29,19 +31,29 @@ class InventoryRepository {
   Future<InventoryAction> consume({
     required int productId,
     required int quantityUnits,
-    required int userId,
     String source = 'manual',
   }) {
     return _apiClient.consume(
       productId: productId,
       quantityUnits: quantityUnits,
-      userId: userId,
       source: source,
     );
   }
 
-  Future<InventoryAction> undoAction(int actionId, int userId) {
-    return _apiClient.undoAction(actionId, userId);
+  Future<InventoryAction> adjust({
+    required int productId,
+    required int newTotalQuantity,
+    String reason = 'manual_correction',
+  }) {
+    return _apiClient.adjust(
+      productId: productId,
+      newTotalQuantity: newTotalQuantity,
+      reason: reason,
+    );
+  }
+
+  Future<InventoryAction> undoAction(int actionId) {
+    return _apiClient.undoAction(actionId);
   }
 
   Future<List<InventoryAction>> getActions({int skip = 0, int limit = 50}) {

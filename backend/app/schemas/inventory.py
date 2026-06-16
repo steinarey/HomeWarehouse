@@ -1,5 +1,5 @@
 from typing import Optional, Any, Dict, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
 
 class RestockRequest(BaseModel):
@@ -40,8 +40,7 @@ class InventoryAction(BaseModel):
     undone_at: Optional[datetime] = None
     undone_by_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CategorySummary(BaseModel):
     category_id: int

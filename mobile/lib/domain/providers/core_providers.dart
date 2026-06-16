@@ -39,8 +39,8 @@ Dio dio(DioRef ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 3),
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 30),
     ),
   );
 
@@ -51,14 +51,6 @@ Dio dio(DioRef ref) {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
-        // Also add X-Warehouse-Id if available (for future use/completeness)
-        // For now, let's just focus on Auth.
-        // Actually, we need X-Warehouse-Id for isolation!
-        // But where do we store it? Maybe just default to first one on backend if missing.
-        // But wait, backend deps.py says:
-        // if x_warehouse_id is None: try to find the first warehouse...
-        // So X-Warehouse-Id is optional but good to have.
-        // Let's stick to Auth first.
         return handler.next(options);
       },
     ),
@@ -74,10 +66,7 @@ ApiClient apiClient(ApiClientRef ref) {
 
 @Riverpod(keepAlive: true)
 UserRepository userRepository(UserRepositoryRef ref) {
-  return UserRepository(
-    ref.watch(apiClientProvider),
-    ref.watch(sharedPreferencesProvider),
-  );
+  return UserRepository(ref.watch(apiClientProvider));
 }
 
 @Riverpod(keepAlive: true)
@@ -94,5 +83,3 @@ ProductRepository productRepository(ProductRepositoryRef ref) {
 CategoryRepository categoryRepository(CategoryRepositoryRef ref) {
   return CategoryRepository(ref.watch(apiClientProvider));
 }
-
-final bottomNavIndexProvider = StateProvider<int>((ref) => 0);

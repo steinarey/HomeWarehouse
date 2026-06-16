@@ -22,18 +22,19 @@ def read_categories(
     current_member: WarehouseMember = Depends(deps.get_current_warehouse_member)
 ):
     categories = db.query(CategoryModel).filter(CategoryModel.warehouse_id == current_member.warehouse_id).offset(skip).limit(limit).all()
-    
+
     if include_stock:
-        # This is N+1 query, but fine for iteration 1 and small datasets. 
-        # For production, we should optimize with a join/subquery.
+        # Single grouped query instead of N+1 per category.
+        rows = (
+            db.query(ProductModel.category_id, func.coalesce(func.sum(StockBatchModel.quantity), 0))
+            .join(StockBatchModel, StockBatchModel.product_id == ProductModel.id)
+            .filter(ProductModel.warehouse_id == current_member.warehouse_id)
+            .group_by(ProductModel.category_id)
+            .all()
+        )
+        totals = {cat_id: int(total) for cat_id, total in rows}
         for cat in categories:
-            # Sum stock for all products in this category
-            total_stock = (
-                db.query(func.sum(StockBatchModel.quantity))
-                .join(ProductModel, StockBatchModel.product_id == ProductModel.id)
-                .filter(ProductModel.category_id == cat.id)
-                .scalar()
-            ) or 0
+            total_stock = totals.get(cat.id, 0)
             cat.current_stock = total_stock
             cat.is_below_min = total_stock < cat.min_stock
 
@@ -109,29 +110,37 @@ def delete_category(
     ).first()
     if category is None:
         raise HTTPException(status_code=404, detail="Category not found")
-    
-    # Manual cascade delete
-    # 1. Unlink InventoryActions from this category
-    db.query(InventoryActionModel).filter(InventoryActionModel.category_id == category_id).update({InventoryActionModel.category_id: None})
 
-    # 2. Find all products in this category
-    products = db.query(ProductModel).filter(ProductModel.category_id == category_id).all()
-    
-    for product in products:
-        # 3. Unlink InventoryActions from this product
-        db.query(InventoryActionModel).filter(InventoryActionModel.product_id == product.id).update({InventoryActionModel.product_id: None})
+    product_ids = [
+        row[0]
+        for row in db.query(ProductModel.id)
+        .filter(ProductModel.category_id == category_id)
+        .all()
+    ]
+    batch_ids = []
+    if product_ids:
+        batch_ids = [
+            row[0]
+            for row in db.query(StockBatchModel.id)
+            .filter(StockBatchModel.product_id.in_(product_ids))
+            .all()
+        ]
 
-        # 4. Find and delete StockBatches for this product
-        stock_batches = db.query(StockBatchModel).filter(StockBatchModel.product_id == product.id).all()
-        for batch in stock_batches:
-            # Unlink InventoryActions from this batch
-            db.query(InventoryActionModel).filter(InventoryActionModel.stock_batch_id == batch.id).update({InventoryActionModel.stock_batch_id: None})
-            db.delete(batch)
-        
-        # 5. Delete the product
-        db.delete(product)
-    
-    # 6. Delete the category
+    # Preserve audit trail by NULLing the FK refs before SA-cascade nukes the
+    # rows themselves. Each .update() is a single SQL statement.
+    db.query(InventoryActionModel).filter(
+        InventoryActionModel.category_id == category_id
+    ).update({InventoryActionModel.category_id: None}, synchronize_session=False)
+    if product_ids:
+        db.query(InventoryActionModel).filter(
+            InventoryActionModel.product_id.in_(product_ids)
+        ).update({InventoryActionModel.product_id: None}, synchronize_session=False)
+    if batch_ids:
+        db.query(InventoryActionModel).filter(
+            InventoryActionModel.stock_batch_id.in_(batch_ids)
+        ).update({InventoryActionModel.stock_batch_id: None}, synchronize_session=False)
+
+    # ORM cascade walks Category -> products -> stock_batches.
     db.delete(category)
     db.commit()
     return category
