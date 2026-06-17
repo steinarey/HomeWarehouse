@@ -41,10 +41,7 @@ MicrosoftAuthUrl _$MicrosoftAuthUrlFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$MicrosoftAuthUrlToJson(MicrosoftAuthUrl instance) =>
-    <String, dynamic>{
-      'auth_url': instance.authUrl,
-      'state': instance.state,
-    };
+    <String, dynamic>{'auth_url': instance.authUrl, 'state': instance.state};
 
 MicrosoftList _$MicrosoftListFromJson(Map<String, dynamic> json) =>
     MicrosoftList(

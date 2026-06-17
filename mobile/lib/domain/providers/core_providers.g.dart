@@ -127,23 +127,8 @@ final categoryRepositoryProvider = Provider<CategoryRepository>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CategoryRepositoryRef = ProviderRef<CategoryRepository>;
-String _$baseUrlHash() => r'02111ffdaa162dbbc13c9210ad94d7d99cf21a18';
-
-/// See also [BaseUrl].
-@ProviderFor(BaseUrl)
-final baseUrlProvider = NotifierProvider<BaseUrl, String>.internal(
-  BaseUrl.new,
-  name: r'baseUrlProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$baseUrlHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$BaseUrl = Notifier<String>;
 String _$connectorRepositoryHash() =>
-    r'aa11ee22bb33cc44dd55ee66ff7788990011aabb';
+    r'4dc6271078067d9ee91d3f2c8d4ee0bf23c513fa';
 
 /// See also [connectorRepository].
 @ProviderFor(connectorRepository)
@@ -161,23 +146,38 @@ final connectorRepositoryProvider = Provider<ConnectorRepository>.internal(
 // ignore: unused_element
 typedef ConnectorRepositoryRef = ProviderRef<ConnectorRepository>;
 String _$pendingRestockRepositoryHash() =>
-    r'bb22ff33cc44dd55ee66aa77bb8899001122bbcc';
+    r'2c6a6c529a7af38170ffe7495e5296256111f5d8';
 
 /// See also [pendingRestockRepository].
 @ProviderFor(pendingRestockRepository)
 final pendingRestockRepositoryProvider =
     Provider<PendingRestockRepository>.internal(
-  pendingRestockRepository,
-  name: r'pendingRestockRepositoryProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$pendingRestockRepositoryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      pendingRestockRepository,
+      name: r'pendingRestockRepositoryProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$pendingRestockRepositoryHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PendingRestockRepositoryRef = ProviderRef<PendingRestockRepository>;
+String _$baseUrlHash() => r'02111ffdaa162dbbc13c9210ad94d7d99cf21a18';
+
+/// See also [BaseUrl].
+@ProviderFor(BaseUrl)
+final baseUrlProvider = NotifierProvider<BaseUrl, String>.internal(
+  BaseUrl.new,
+  name: r'baseUrlProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$baseUrlHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$BaseUrl = Notifier<String>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

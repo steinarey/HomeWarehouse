@@ -3,14 +3,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.models.user import User as UserModel
+from app.models.warehouse_member import WarehouseMember
 from app.schemas.user import User, UserCreate, UserUpdate
 from app.schemas.warehouse_member import WarehouseMemberOut
 
 router = APIRouter()
 
 @router.get("/me", response_model=User)
-def read_current_user(current_user: UserModel = Depends(deps.get_current_user)):
-    return current_user
+def read_current_user(
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member),
+):
+    # The legacy `User.role` column defaults to "user" and was never updated
+    # when warehouse roles became authoritative. Surface the warehouse-scoped
+    # role so the mobile UI can gate admin features correctly.
+    user = current_member.user
+    return User(
+        id=user.id,
+        name=user.name,
+        role=current_member.role,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
 
 
 @router.get("/", response_model=List[User])
@@ -26,7 +39,6 @@ def read_users(
 from app.core.security import get_password_hash
 
 from app.models.warehouse import Warehouse
-from app.models.warehouse_member import WarehouseMember
 from app.models.invite import Invite
 from app.core.time import utc_now
 

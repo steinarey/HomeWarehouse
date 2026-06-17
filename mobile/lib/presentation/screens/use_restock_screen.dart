@@ -714,13 +714,14 @@ class _UseRestockScreenState extends ConsumerState<UseRestockScreen>
           ),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       floatingActionButton: _lastActionId != null
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
               onPressed: _undoLastAction,
-              label: Text(AppLocalizations.of(context).get('undoLastAction')),
-              icon: const Icon(Icons.undo),
+              tooltip: AppLocalizations.of(context).get('undoLastAction'),
               backgroundColor: Colors.grey[800],
               foregroundColor: Colors.white,
+              child: const Icon(Icons.undo),
             )
           : null,
     );

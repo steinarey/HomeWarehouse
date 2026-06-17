@@ -7,38 +7,38 @@ part of 'connector_provider.dart';
 // **************************************************************************
 
 String _$microsoftConnectorHash() =>
-    r'cc33dd44ee55ff66aa77bb8899001122ccdd33ee';
+    r'3fb501b3de82b5dcd064e151f6788eba54e4e14b';
 
 /// See also [microsoftConnector].
 @ProviderFor(microsoftConnector)
 final microsoftConnectorProvider =
     AutoDisposeFutureProvider<Connector?>.internal(
-  microsoftConnector,
-  name: r'microsoftConnectorProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$microsoftConnectorHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      microsoftConnector,
+      name: r'microsoftConnectorProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$microsoftConnectorHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MicrosoftConnectorRef = AutoDisposeFutureProviderRef<Connector?>;
-String _$microsoftListsHash() => r'dd44ee55ff66aa77bb8899001122334455667788';
+String _$microsoftListsHash() => r'ee4d505efaf1105aa4f25ee7a2e029d36b2f6b62';
 
 /// See also [microsoftLists].
 @ProviderFor(microsoftLists)
 final microsoftListsProvider =
     AutoDisposeFutureProvider<List<MicrosoftList>>.internal(
-  microsoftLists,
-  name: r'microsoftListsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$microsoftListsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+      microsoftLists,
+      name: r'microsoftListsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$microsoftListsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
