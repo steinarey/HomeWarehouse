@@ -205,6 +205,7 @@ class AppLocalizations {
       'notes': 'Notes',
       'loadMore': 'Load more',
       'noMoreResults': 'No more results',
+      'location': 'Location',
     },
     'is': {
       'appTitle': 'PantryKeeper',
@@ -400,6 +401,7 @@ class AppLocalizations {
       'notes': 'Athugasemdir',
       'loadMore': 'Hlaða meira',
       'noMoreResults': 'Ekki fleiri niðurstöður',
+      'location': 'Staðsetning',
     },
   };
 

@@ -16,6 +16,7 @@ Category _$CategoryFromJson(Map<String, dynamic> json) => Category(
   targetStock: (json['target_stock'] as num?)?.toInt(),
   nfcTagId: json['nfc_tag_id'] as String?,
   consumptionRate: (json['consumption_rate'] as num?)?.toInt(),
+  locationId: (json['location_id'] as num?)?.toInt(),
   currentStock: (json['current_stock'] as num?)?.toInt(),
   isBelowMin: json['is_below_min'] as bool?,
 );
@@ -30,6 +31,7 @@ Map<String, dynamic> _$CategoryToJson(Category instance) => <String, dynamic>{
   'target_stock': instance.targetStock,
   'nfc_tag_id': instance.nfcTagId,
   'consumption_rate': instance.consumptionRate,
+  'location_id': instance.locationId,
   'current_stock': instance.currentStock,
   'is_below_min': instance.isBelowMin,
 };

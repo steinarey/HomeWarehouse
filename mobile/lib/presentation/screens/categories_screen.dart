@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/data/models/category.dart';
+import 'package:mobile/data/models/location.dart';
 import 'package:mobile/domain/providers/categories_provider.dart';
 import 'package:mobile/domain/providers/core_providers.dart';
+import 'package:mobile/domain/providers/locations_provider.dart';
 import 'package:mobile/l10n/app_localizations.dart';
 
 class CategoriesScreen extends ConsumerWidget {
@@ -194,35 +196,41 @@ class CategoriesScreen extends ConsumerWidget {
     final nameController = TextEditingController();
     final minStockController = TextEditingController(text: '0');
     final consumptionRateController = TextEditingController();
+    final locationId = ValueNotifier<int?>(null);
     final l10n = AppLocalizations.of(context);
 
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.get('addCategory')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: l10n.get('name')),
-              autofocus: true,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: minStockController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: l10n.get('minStock')),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: consumptionRateController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: l10n.get('consumptionRate'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: l10n.get('name')),
+                autofocus: true,
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              TextField(
+                controller: minStockController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l10n.get('minStock')),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: consumptionRateController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: l10n.get('consumptionRate'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _LocationDropdown(selected: locationId),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -238,6 +246,7 @@ class CategoriesScreen extends ConsumerWidget {
                   'min_stock': int.tryParse(minStockController.text) ?? 0,
                   'consumption_rate':
                       int.tryParse(consumptionRateController.text),
+                  'location_id': locationId.value,
                 });
                 if (context.mounted) {
                   Navigator.pop(context);
@@ -272,6 +281,7 @@ class CategoriesScreen extends ConsumerWidget {
     );
     final isCriticalController = ValueNotifier<bool>(category.isCritical);
     final isOneOffController = ValueNotifier<bool>(category.isOneOff);
+    final locationId = ValueNotifier<int?>(category.locationId);
     final l10n = AppLocalizations.of(context);
 
     await showDialog(
@@ -327,6 +337,8 @@ class CategoriesScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              _LocationDropdown(selected: locationId),
+              const SizedBox(height: 16),
               Text(
                 '${l10n.get('currentStock')}: ${category.currentStock ?? 0}',
               ),
@@ -358,6 +370,7 @@ class CategoriesScreen extends ConsumerWidget {
                         ),
                         'is_critical': isCriticalController.value,
                         'is_one_off': isOneOffController.value,
+                        'location_id': locationId.value,
                       },
                     );
                 if (context.mounted) {
@@ -428,5 +441,53 @@ class CategoriesScreen extends ConsumerWidget {
         }
       }
     }
+  }
+}
+
+class _LocationDropdown extends ConsumerWidget {
+  final ValueNotifier<int?> selected;
+  const _LocationDropdown({required this.selected});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final locationsAsync = ref.watch(locationsListProvider);
+    return locationsAsync.when(
+      data: (locations) => ValueListenableBuilder<int?>(
+        valueListenable: selected,
+        builder: (context, value, _) {
+          // Coerce to null if the stored id is no longer in the list (e.g.
+          // location was deleted) so DropdownButton doesn't assert.
+          final ids = locations.map((l) => l.id).toSet();
+          final safeValue = ids.contains(value) ? value : null;
+          return DropdownButtonFormField<int?>(
+            value: safeValue,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: l10n.get('location'),
+              border: const OutlineInputBorder(),
+            ),
+            items: <DropdownMenuItem<int?>>[
+              DropdownMenuItem<int?>(
+                value: null,
+                child: Text(l10n.get('unspecifiedLocation')),
+              ),
+              ...locations.map(
+                (Location l) => DropdownMenuItem<int?>(
+                  value: l.id,
+                  child: Text(l.label.isEmpty ? '(unnamed)' : l.label),
+                ),
+              ),
+            ],
+            onChanged: (v) => selected.value = v,
+          );
+        },
+      ),
+      loading: () => const Padding(
+        padding: EdgeInsets.all(8),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Text('Error: $e'),
+    );
   }
 }

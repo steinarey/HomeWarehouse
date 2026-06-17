@@ -165,7 +165,7 @@ final pendingRestockRepositoryProvider =
 // ignore: unused_element
 typedef PendingRestockRepositoryRef = ProviderRef<PendingRestockRepository>;
 String _$locationRepositoryHash() =>
-    r'cc11aa22bb33dd44ee55ff66001122334455aabb';
+    r'a9784cc6fa58574e8b4448c66817144acf7d755b';
 
 /// See also [locationRepository].
 @ProviderFor(locationRepository)

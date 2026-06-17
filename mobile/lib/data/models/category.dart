@@ -19,6 +19,8 @@ class Category {
   final String? nfcTagId;
   @JsonKey(name: 'consumption_rate')
   final int? consumptionRate;
+  @JsonKey(name: 'location_id')
+  final int? locationId;
 
   // These might come from summary endpoints, so they are optional
   @JsonKey(name: 'current_stock')
@@ -36,6 +38,7 @@ class Category {
     this.targetStock,
     this.nfcTagId,
     this.consumptionRate,
+    this.locationId,
     this.currentStock,
     this.isBelowMin,
   });
@@ -58,6 +61,7 @@ class Category {
         other.targetStock == targetStock &&
         other.nfcTagId == nfcTagId &&
         other.consumptionRate == consumptionRate &&
+        other.locationId == locationId &&
         other.currentStock == currentStock &&
         other.isBelowMin == isBelowMin;
   }
@@ -74,6 +78,7 @@ class Category {
       targetStock,
       nfcTagId,
       consumptionRate,
+      locationId,
       currentStock,
       isBelowMin,
     );
