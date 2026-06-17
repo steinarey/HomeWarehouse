@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     MICROSOFT_CLIENT_SECRET: str = ""
     # `common` accepts personal MSAs (where consumer To Do lives) and work/school accounts.
     MICROSOFT_AUTHORITY: str = "https://login.microsoftonline.com/common"
-    MICROSOFT_SCOPES: str = "Tasks.ReadWrite User.Read offline_access"
+    # `offline_access`, `openid`, `profile` are added by MSAL automatically and
+    # MUST NOT appear here — MSAL raises ValueError if you include them.
+    MICROSOFT_SCOPES: str = "Tasks.ReadWrite User.Read"
 
     # Fernet key (URL-safe base64, 32 bytes) used to encrypt OAuth tokens at
     # rest. Generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
