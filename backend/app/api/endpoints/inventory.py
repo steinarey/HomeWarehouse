@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.api import deps
 from app.services.inventory_service import InventoryService
@@ -240,10 +240,37 @@ def get_actions(
 ):
     actions = (
         db.query(InventoryActionModel)
+        .options(
+            joinedload(InventoryActionModel.category),
+            joinedload(InventoryActionModel.product),
+            joinedload(InventoryActionModel.user),
+        )
         .filter(InventoryActionModel.warehouse_id == current_member.warehouse_id)
         .order_by(InventoryActionModel.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
-    return actions
+    return [
+        InventoryAction(
+            id=a.id,
+            user_id=a.user_id,
+            action_type=a.action_type,
+            source=a.source,
+            product_id=a.product_id,
+            category_id=a.category_id,
+            stock_batch_id=a.stock_batch_id,
+            quantity_delta=a.quantity_delta,
+            previous_quantity=a.previous_quantity,
+            new_quantity=a.new_quantity,
+            payload=a.payload,
+            created_at=a.created_at,
+            undone=a.undone,
+            undone_at=a.undone_at,
+            undone_by_id=a.undone_by_id,
+            category_name=a.category.name if a.category else None,
+            product_name=a.product.name if a.product else None,
+            user_name=a.user.name if a.user else None,
+        )
+        for a in actions
+    ]

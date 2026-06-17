@@ -40,6 +40,12 @@ class InventoryAction(BaseModel):
     undone_at: Optional[datetime] = None
     undone_by_id: Optional[int] = None
 
+    # Denormalized display names. Populated by the /actions endpoint so the
+    # activity log can render rows without N+1 lookups on the client side.
+    category_name: Optional[str] = None
+    product_name: Optional[str] = None
+    user_name: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 class CategorySummary(BaseModel):

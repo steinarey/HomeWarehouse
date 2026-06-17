@@ -51,7 +51,8 @@ class _PendingRestockTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     return Card(
-      color: Colors.amber.shade50,
+      // No explicit color — defaults to theme `cardColor`, which adapts to
+      // light/dark mode and matches the recent-activity list.
       child: ListTile(
         leading: const Icon(Icons.shopping_basket, color: Colors.amber),
         title: Text(item.categoryName),
