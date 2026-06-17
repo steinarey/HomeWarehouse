@@ -16,12 +16,15 @@ def read_products(
     skip: int = 0,
     limit: int = 100,
     q: Optional[str] = None,
+    category_id: Optional[int] = None,
     db: Session = Depends(deps.get_db),
     current_member: WarehouseMember = Depends(deps.get_current_warehouse_member),
 ):
     query = db.query(ProductModel).filter(
         ProductModel.warehouse_id == current_member.warehouse_id
     )
+    if category_id is not None:
+        query = query.filter(ProductModel.category_id == category_id)
     if q:
         pattern = f"%{q.strip()}%"
         query = query.filter(
@@ -30,7 +33,7 @@ def read_products(
                 ProductModel.barcode.ilike(pattern),
             )
         )
-    return query.offset(skip).limit(limit).all()
+    return query.order_by(ProductModel.name.asc()).offset(skip).limit(limit).all()
 
 @router.post("/", response_model=Product)
 def create_product(

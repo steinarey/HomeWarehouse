@@ -45,12 +45,27 @@ class ApiClient {
     return (response.data as List).map((e) => Category.fromJson(e)).toList();
   }
 
-  Future<List<Product>> getProducts({String? query}) async {
+  Future<List<Product>> getProducts({String? query, int? categoryId}) async {
     final response = await _dio.get(
       '/products/',
-      queryParameters: {if (query != null) 'q': query},
+      queryParameters: {
+        if (query != null) 'q': query,
+        if (categoryId != null) 'category_id': categoryId,
+      },
     );
     return (response.data as List).map((e) => Product.fromJson(e)).toList();
+  }
+
+  Future<Product> updateProduct(
+    int productId,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await _dio.patch('/products/$productId', data: data);
+    return Product.fromJson(response.data);
+  }
+
+  Future<void> deleteProduct(int productId) async {
+    await _dio.delete('/products/$productId');
   }
 
   Future<Product?> getProductByBarcode(String barcode) async {

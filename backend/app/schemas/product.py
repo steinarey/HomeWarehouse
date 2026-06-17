@@ -9,6 +9,7 @@ class ProductBase(BaseModel):
     package_size: int = 1
     photo_url: Optional[str] = None
     product_metadata: Optional[Dict[str, Any]] = None
+    location_id: Optional[int] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -20,6 +21,7 @@ class ProductUpdate(BaseModel):
     package_size: Optional[int] = None
     photo_url: Optional[str] = None
     product_metadata: Optional[Dict[str, Any]] = None
+    location_id: Optional[int] = None
 
 class Product(ProductBase):
     id: int

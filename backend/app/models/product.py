@@ -16,6 +16,10 @@ class Product(Base):
     package_size: Mapped[int] = mapped_column(Integer, default=1)
     photo_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     product_metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("locations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
 

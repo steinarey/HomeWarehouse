@@ -206,6 +206,13 @@ class AppLocalizations {
       'loadMore': 'Load more',
       'noMoreResults': 'No more results',
       'location': 'Location',
+      'products': 'Products',
+      'viewProducts': 'View products',
+      'editProduct': 'Edit product',
+      'deleteProduct': 'Delete product',
+      'confirmDeleteProduct':
+          'Delete "{name}"? Stock batches in this product will also be removed.',
+      'noProductsInCategory': 'No products in this category yet.',
     },
     'is': {
       'appTitle': 'PantryKeeper',
@@ -402,6 +409,13 @@ class AppLocalizations {
       'loadMore': 'Hlaða meira',
       'noMoreResults': 'Ekki fleiri niðurstöður',
       'location': 'Staðsetning',
+      'products': 'Vörur',
+      'viewProducts': 'Skoða vörur',
+      'editProduct': 'Breyta vöru',
+      'deleteProduct': 'Eyða vöru',
+      'confirmDeleteProduct':
+          'Eyða "{name}"? Birgðir í þessari vöru verða einnig fjarlægðar.',
+      'noProductsInCategory': 'Engar vörur í þessum flokki enn.',
     },
   };
 

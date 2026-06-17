@@ -9,6 +9,7 @@ import 'package:mobile/presentation/screens/activity_log_screen.dart';
 import 'package:mobile/presentation/screens/settings_screen.dart';
 import 'package:mobile/presentation/screens/onboarding_screen.dart';
 import 'package:mobile/presentation/screens/categories_screen.dart';
+import 'package:mobile/presentation/screens/category_products_screen.dart';
 import 'package:mobile/presentation/screens/locations_screen.dart';
 import 'package:mobile/presentation/screens/location_detail_screen.dart';
 import 'package:mobile/presentation/screens/login_screen.dart';
@@ -79,6 +80,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/categories',
                 builder: (context, state) => const CategoriesScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id/products',
+                    builder: (context, state) => CategoryProductsScreen(
+                      categoryId: int.parse(state.pathParameters['id']!),
+                    ),
+                  ),
+                ],
               ),
               GoRoute(
                 path: '/locations',

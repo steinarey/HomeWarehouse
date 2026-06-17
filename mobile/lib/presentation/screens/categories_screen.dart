@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mobile/data/models/category.dart';
 import 'package:mobile/data/models/location.dart';
 import 'package:mobile/domain/providers/categories_provider.dart';
@@ -90,7 +91,15 @@ class CategoriesScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        tooltip: AppLocalizations.of(
+                          context,
+                        ).get('viewProducts'),
+                        icon: const Icon(Icons.list),
+                        onPressed: () =>
+                            context.push('/categories/${category.id}/products'),
+                      ),
                       const Icon(Icons.edit),
                     ],
                   ),

@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 from app.api import deps
 from app.api import deps
 from app.models.location import Location as LocationModel
@@ -102,14 +103,30 @@ def read_location_contents(
     if location is None:
         raise HTTPException(status_code=404, detail="Location not found")
 
+    # Three ways a stock batch counts as "in" this location, in priority order:
+    #   (a) batch has explicit location_id matching;
+    #   (b) batch.location_id is null, product default location matches;
+    #   (c) batch.location_id and product.location_id are both null, category
+    #       default location matches.
     rows = (
         db.query(StockBatch, ProductModel, CategoryModel)
         .join(ProductModel, ProductModel.id == StockBatch.product_id)
         .join(CategoryModel, CategoryModel.id == ProductModel.category_id)
         .filter(
-            StockBatch.location_id == location_id,
             StockBatch.warehouse_id == current_member.warehouse_id,
             StockBatch.quantity > 0,
+            or_(
+                StockBatch.location_id == location_id,
+                and_(
+                    StockBatch.location_id.is_(None),
+                    ProductModel.location_id == location_id,
+                ),
+                and_(
+                    StockBatch.location_id.is_(None),
+                    ProductModel.location_id.is_(None),
+                    CategoryModel.location_id == location_id,
+                ),
+            ),
         )
         .order_by(CategoryModel.name.asc(), ProductModel.name.asc(), StockBatch.expiry_date.asc().nullslast())
         .all()

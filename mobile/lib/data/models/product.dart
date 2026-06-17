@@ -13,6 +13,8 @@ class Product {
   final int packageSize;
   @JsonKey(name: 'photo_url')
   final String? photoUrl;
+  @JsonKey(name: 'location_id')
+  final int? locationId;
 
   // Optional fields that might be included in some responses
   @JsonKey(name: 'category_name')
@@ -25,6 +27,7 @@ class Product {
     this.barcode,
     this.packageSize = 1,
     this.photoUrl,
+    this.locationId,
     this.categoryName,
   });
 
