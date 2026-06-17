@@ -10,6 +10,7 @@ so tests (which don't set the env) never see it run.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -38,8 +39,9 @@ def _run_microsoft_todo_sync() -> None:
         )
         for connector in connectors:
             try:
+                # Push is event-driven (inventory mutations, category edits)
+                # — periodic loop only handles the upstream-to-app direction.
                 ms_sync.poll_completed_tasks(db, connector)
-                ms_sync.push_low_stock_to_todo(db, connector)
             except Exception:
                 # Don't let one bad connector break the loop for the rest.
                 logger.exception(
@@ -60,6 +62,9 @@ def start_scheduler() -> None:
         return
 
     _scheduler = BackgroundScheduler(timezone="UTC")
+    # First run 10s after boot (after migrations/app are ready), then every
+    # MS_TODO_SYNC_INTERVAL_SECONDS. Without explicit next_run_time APScheduler
+    # waits a full interval before firing.
     _scheduler.add_job(
         _run_microsoft_todo_sync,
         trigger="interval",
@@ -67,7 +72,7 @@ def start_scheduler() -> None:
         id="ms_todo_sync",
         max_instances=1,
         coalesce=True,
-        next_run_time=None,
+        next_run_time=datetime.utcnow() + timedelta(seconds=10),
     )
     _scheduler.start()
     logger.info(

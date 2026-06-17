@@ -26,6 +26,7 @@ from app.core import security
 from app.core.config import settings
 from app.core.time import utc_now
 from app.integrations.microsoft_todo import client as graph
+from app.integrations.microsoft_todo import sync as ms_sync
 from app.integrations.microsoft_todo.tokens import (
     MicrosoftAuthError,
     build_authorization_url,
@@ -173,6 +174,25 @@ def update_microsoft_connector(
     db.commit()
     db.refresh(connector)
     return connector
+
+
+@router.post("/microsoft-todo/sync-now")
+def sync_microsoft_now(
+    db: Session = Depends(deps.get_db),
+    current_member: WarehouseMember = Depends(deps.get_current_warehouse_member),
+):
+    """Run a poll + push immediately so admins don't have to wait for the
+    next scheduled tick to see new tasks in MS To Do or new reminders surface.
+    """
+    _require_admin(current_member)
+    connector = _get_microsoft_connector(db, current_member.warehouse_id)
+    if connector is None or connector.status != "connected":
+        raise HTTPException(status_code=400, detail="Microsoft account not connected")
+    if not connector.selected_list_id:
+        raise HTTPException(status_code=400, detail="No list selected")
+    transitioned = ms_sync.poll_completed_tasks(db, connector)
+    pushed = ms_sync.push_low_stock_to_todo(db, connector)
+    return {"pushed": pushed, "transitioned": transitioned}
 
 
 @router.delete("/microsoft-todo", status_code=204)

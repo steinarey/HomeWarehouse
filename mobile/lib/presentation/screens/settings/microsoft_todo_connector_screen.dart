@@ -20,6 +20,7 @@ class _MicrosoftTodoConnectorScreenState
     extends ConsumerState<MicrosoftTodoConnectorScreen>
     with WidgetsBindingObserver {
   bool _connecting = false;
+  bool _syncing = false;
 
   @override
   void initState() {
@@ -233,7 +234,26 @@ class _MicrosoftTodoConnectorScreenState
     children.add(
       _kv(l10n.get('lastSynced'), _formatDate(connector.lastSyncedAt, l10n)),
     );
-    children.add(const SizedBox(height: 24));
+    children.add(const SizedBox(height: 16));
+    children.add(
+      SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _syncing || connector.selectedListId == null
+              ? null
+              : _syncNow,
+          icon: _syncing
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.sync),
+          label: Text(l10n.get('syncNow')),
+        ),
+      ),
+    );
+    children.add(const SizedBox(height: 12));
     children.add(
       SizedBox(
         width: double.infinity,
@@ -249,6 +269,40 @@ class _MicrosoftTodoConnectorScreenState
     );
 
     return children;
+  }
+
+  Future<void> _syncNow() async {
+    final l10n = AppLocalizations.of(context);
+    setState(() => _syncing = true);
+    try {
+      final result = await ref
+          .read(connectorRepositoryProvider)
+          .syncMicrosoftNow();
+      if (!mounted) return;
+      ref.invalidate(microsoftConnectorProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n
+                .get('syncResultMessage')
+                .replaceFirst('{pushed}', '${result['pushed'] ?? 0}')
+                .replaceFirst(
+                  '{transitioned}',
+                  '${result['transitioned'] ?? 0}',
+                ),
+          ),
+        ),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.response?.data?.toString() ?? e.message ?? 'Error'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
   }
 
   Widget _statusTile(Connector? connector, AppLocalizations l10n) {

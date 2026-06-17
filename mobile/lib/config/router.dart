@@ -25,6 +25,17 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
     redirect: (context, state) {
+      // OAuth deep link: the system browser hits the backend callback, which
+      // 302s to `pantrykeeper://connector/microsoft-todo/done?status=...`.
+      // Android delivers that URI to the app and GoRouter tries to match it
+      // by path. Map it onto the connector screen so the lifecycle-resume
+      // refresh on that screen reflects the new connection state.
+      if (state.uri.scheme == 'pantrykeeper' ||
+          state.uri.host == 'connector') {
+        final query = state.uri.query.isEmpty ? '' : '?${state.uri.query}';
+        return '/settings/connectors/microsoft-todo$query';
+      }
+
       final isLoggedIn = authState.asData?.value ?? false;
       final isLoggingIn = state.uri.path == '/login';
       final isRegistering = state.uri.path == '/register';

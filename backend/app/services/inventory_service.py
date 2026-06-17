@@ -33,6 +33,21 @@ def _resolve_pending_restocks(db: Session, warehouse_id: int, category_id: Optio
         logger.exception("Failed to auto-resolve pending restocks for category %s", category_id)
 
 
+def _maybe_push_low_stock(db: Session, warehouse_id: int, category_id: Optional[int]) -> None:
+    """Best-effort: if the affected category is now at-or-below min stock,
+    push a task to MS To Do immediately. Idempotent — push_for_category skips
+    when an open PendingRestock row already exists for the category. Never
+    raises so a Graph hiccup can't block the inventory action.
+    """
+    if category_id is None:
+        return
+    try:
+        from app.integrations.microsoft_todo.sync import push_for_category
+        push_for_category(db, warehouse_id=warehouse_id, category_id=category_id)
+    except Exception:
+        logger.exception("Failed low-stock push for category %s", category_id)
+
+
 def _consume_fefo(db: Session, product_id: int, amount: int) -> Optional[int]:
     """Drain `amount` units across batches FEFO. Returns the id of the last
     batch touched (for action bookkeeping). Caller must guarantee total stock
@@ -126,6 +141,7 @@ class InventoryService:
         db.commit()
         db.refresh(action)
         _resolve_pending_restocks(db, product.warehouse_id, product.category_id)
+        _maybe_push_low_stock(db, product.warehouse_id, product.category_id)
         return action
 
     @staticmethod
@@ -158,6 +174,7 @@ class InventoryService:
         db.commit()
         db.refresh(action)
         _resolve_pending_restocks(db, product.warehouse_id, product.category_id)
+        _maybe_push_low_stock(db, product.warehouse_id, product.category_id)
         return action
 
     @staticmethod
@@ -205,6 +222,7 @@ class InventoryService:
         db.commit()
         db.refresh(action)
         _resolve_pending_restocks(db, product.warehouse_id, product.category_id)
+        _maybe_push_low_stock(db, product.warehouse_id, product.category_id)
         return action
 
     @staticmethod
@@ -272,4 +290,5 @@ class InventoryService:
         db.commit()
         db.refresh(new_action)
         _resolve_pending_restocks(db, original_action.warehouse_id, original_action.category_id)
+        _maybe_push_low_stock(db, original_action.warehouse_id, original_action.category_id)
         return new_action

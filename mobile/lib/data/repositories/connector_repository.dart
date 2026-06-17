@@ -25,4 +25,7 @@ class ConnectorRepository {
 
   Future<void> disconnectMicrosoftConnector() =>
       _apiClient.disconnectMicrosoftConnector();
+
+  Future<Map<String, dynamic>> syncMicrosoftNow() =>
+      _apiClient.syncMicrosoftNow();
 }

@@ -188,6 +188,8 @@ class AppLocalizations {
       'microsoftConnected': 'Microsoft account connected',
       'microsoftDisconnected': 'Microsoft account disconnected',
       'listUpdated': 'List updated',
+      'syncNow': 'Sync now',
+      'syncResultMessage': 'Pushed {pushed} · checked-off {transitioned}',
     },
     'is': {
       'appTitle': 'PantryKeeper',
@@ -366,6 +368,8 @@ class AppLocalizations {
       'microsoftConnected': 'Microsoft aðgangur tengdur',
       'microsoftDisconnected': 'Microsoft aðgangur aftengdur',
       'listUpdated': 'Listi uppfærður',
+      'syncNow': 'Samstilla núna',
+      'syncResultMessage': 'Send {pushed} · merkt af {transitioned}',
     },
   };
 

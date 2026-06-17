@@ -132,6 +132,98 @@ def push_low_stock_to_todo(db: Session, connector: WarehouseConnector) -> int:
     return pushed
 
 
+def push_for_category(
+    db: Session, *, warehouse_id: int, category_id: int
+) -> bool:
+    """Push a single category to MS To Do if it's at-or-below min stock AND
+    has no open PendingRestock row yet. Returns True if a task was created.
+
+    Called inline from InventoryService and category-update endpoints so the
+    user sees the task pop into their shopping list within seconds, not at the
+    next 10-minute tick.
+    """
+    connector = (
+        db.query(WarehouseConnector)
+        .filter(
+            WarehouseConnector.warehouse_id == warehouse_id,
+            WarehouseConnector.kind == "microsoft_todo",
+        )
+        .first()
+    )
+    if (
+        connector is None
+        or connector.status != "connected"
+        or not connector.selected_list_id
+    ):
+        return False
+
+    category = (
+        db.query(Category)
+        .filter(Category.id == category_id, Category.warehouse_id == warehouse_id)
+        .first()
+    )
+    if category is None:
+        return False
+
+    current_stock = (
+        db.query(func.coalesce(func.sum(StockBatch.quantity), 0))
+        .join(Product, Product.id == StockBatch.product_id)
+        .filter(Product.category_id == category_id)
+        .scalar()
+    ) or 0
+    if int(current_stock) > category.min_stock:
+        return False
+
+    existing = (
+        db.query(PendingRestock)
+        .filter(
+            PendingRestock.warehouse_id == warehouse_id,
+            PendingRestock.category_id == category_id,
+            PendingRestock.source == "ms_todo",
+            PendingRestock.status.in_(
+                [STATUS_AWAITING_PURCHASE, STATUS_AWAITING_RESTOCK]
+            ),
+        )
+        .first()
+    )
+    if existing is not None:
+        return False
+
+    try:
+        access_token = get_valid_access_token(db, connector)
+    except MicrosoftAuthError as e:
+        _mark_connector_error(db, connector, str(e))
+        return False
+
+    try:
+        task = graph.create_task(
+            access_token,
+            list_id=connector.selected_list_id,
+            title=category.name,
+            body=f"PantryKeeper: {category.name} is at or below minimum stock.",
+            category_id=category.id,
+            warehouse_id=warehouse_id,
+        )
+    except graph.MicrosoftGraphError as e:
+        logger.warning("MS Graph create_task failed for category %s: %s", category_id, e)
+        _mark_connector_error(db, connector, f"create_task: {e}")
+        return False
+
+    row = PendingRestock(
+        warehouse_id=warehouse_id,
+        category_id=category_id,
+        source="ms_todo",
+        status=STATUS_AWAITING_PURCHASE,
+        external_task_id=task.get("id"),
+        external_list_id=connector.selected_list_id,
+    )
+    db.add(row)
+    connector.last_synced_at = utc_now()
+    db.add(connector)
+    db.commit()
+    return True
+
+
 def poll_completed_tasks(db: Session, connector: WarehouseConnector) -> int:
     """For each awaiting_purchase row, check upstream task status. Transition
     completed ones to awaiting_restock. Returns the number transitioned.

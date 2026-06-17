@@ -251,6 +251,11 @@ class ApiClient {
     await _dio.delete('/connectors/microsoft-todo');
   }
 
+  Future<Map<String, dynamic>> syncMicrosoftNow() async {
+    final response = await _dio.post('/connectors/microsoft-todo/sync-now');
+    return Map<String, dynamic>.from(response.data);
+  }
+
   Future<List<PendingRestock>> getPendingRestocks() async {
     final response = await _dio.get('/pending-restock/');
     return (response.data as List)

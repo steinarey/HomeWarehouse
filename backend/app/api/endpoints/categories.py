@@ -100,6 +100,20 @@ def update_category(
     db.add(category)
     db.commit()
     db.refresh(category)
+
+    # If the min-stock bump just made the category low, push a task to MS To Do
+    # right away. Idempotent — skips when an open reminder already exists.
+    try:
+        from app.integrations.microsoft_todo.sync import push_for_category
+        push_for_category(
+            db,
+            warehouse_id=current_member.warehouse_id,
+            category_id=category.id,
+        )
+    except Exception:
+        # Best-effort. A Graph hiccup must not block category edits.
+        pass
+
     return category
 
 @router.delete("/{category_id}", response_model=Category)
