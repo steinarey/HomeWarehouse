@@ -11,6 +11,7 @@ from app.schemas.inventory import (
 from app.models.category import Category
 from app.models.product import Product
 from app.models.stock_batch import StockBatch
+from app.models.location import Location
 from app.models.inventory_action import InventoryAction as InventoryActionModel
 from app.models.warehouse_member import WarehouseMember
 
@@ -182,6 +183,11 @@ def get_dashboard(
         .filter(Category.warehouse_id == warehouse_id)
         .count()
     )
+    total_locations = (
+        db.query(Location)
+        .filter(Location.warehouse_id == warehouse_id)
+        .count()
+    )
 
     categories = (
         db.query(Category)
@@ -199,35 +205,11 @@ def get_dashboard(
             if cat.is_critical:
                 low_stock_critical_count += 1
 
-    actions = (
-        db.query(InventoryActionModel)
-        .filter(InventoryActionModel.warehouse_id == warehouse_id)
-        .order_by(InventoryActionModel.created_at.desc())
-        .limit(10)
-        .all()
-    )
-    recent_actions = []
-    for action in actions:
-        cat_name = action.category.name if action.category else "Unknown"
-        prod_name = action.product.name if action.product else "Unknown"
-        user_name = action.user.name if action.user else "Unknown"
-
-        recent_actions.append({
-            "id": action.id,
-            "action_type": action.action_type,
-            "category_name": cat_name,
-            "product_name": prod_name,
-            "quantity_delta": action.quantity_delta,
-            "user_name": user_name,
-            "created_at": action.created_at,
-            "undone": action.undone,
-        })
-
     return DashboardSummary(
         total_categories=total_categories,
+        total_locations=total_locations,
         low_stock_categories=low_stock_count,
         low_stock_critical_categories=low_stock_critical_count,
-        recent_actions=recent_actions,
     )
 
 

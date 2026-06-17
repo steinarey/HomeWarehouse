@@ -69,6 +69,6 @@ class LowStockItem(BaseModel):
 
 class DashboardSummary(BaseModel):
     total_categories: int
+    total_locations: int
     low_stock_categories: int
     low_stock_critical_categories: int
-    recent_actions: List[Dict[str, Any]]

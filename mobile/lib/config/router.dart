@@ -9,6 +9,8 @@ import 'package:mobile/presentation/screens/activity_log_screen.dart';
 import 'package:mobile/presentation/screens/settings_screen.dart';
 import 'package:mobile/presentation/screens/onboarding_screen.dart';
 import 'package:mobile/presentation/screens/categories_screen.dart';
+import 'package:mobile/presentation/screens/locations_screen.dart';
+import 'package:mobile/presentation/screens/location_detail_screen.dart';
 import 'package:mobile/presentation/screens/login_screen.dart';
 import 'package:mobile/presentation/screens/register_screen.dart';
 import 'package:mobile/presentation/screens/user_management_screen.dart';
@@ -77,6 +79,18 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/categories',
                 builder: (context, state) => const CategoriesScreen(),
+              ),
+              GoRoute(
+                path: '/locations',
+                builder: (context, state) => const LocationsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => LocationDetailScreen(
+                      locationId: int.parse(state.pathParameters['id']!),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

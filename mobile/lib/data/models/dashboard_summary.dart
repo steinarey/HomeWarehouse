@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'inventory_action.dart';
 
 part 'dashboard_summary.g.dart';
 
@@ -7,18 +6,18 @@ part 'dashboard_summary.g.dart';
 class DashboardSummary {
   @JsonKey(name: 'total_categories')
   final int totalCategories;
+  @JsonKey(name: 'total_locations')
+  final int totalLocations;
   @JsonKey(name: 'low_stock_categories')
   final int lowStockCategories;
   @JsonKey(name: 'low_stock_critical_categories')
   final int lowStockCriticalCategories;
-  @JsonKey(name: 'recent_actions')
-  final List<InventoryAction> recentActions;
 
   DashboardSummary({
     required this.totalCategories,
+    required this.totalLocations,
     required this.lowStockCategories,
     required this.lowStockCriticalCategories,
-    required this.recentActions,
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) =>

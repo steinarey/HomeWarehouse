@@ -10,6 +10,7 @@ import 'package:mobile/data/repositories/product_repository.dart';
 import 'package:mobile/data/repositories/category_repository.dart';
 import 'package:mobile/data/repositories/connector_repository.dart';
 import 'package:mobile/data/repositories/pending_restock_repository.dart';
+import 'package:mobile/data/repositories/location_repository.dart';
 
 part 'core_providers.g.dart';
 
@@ -96,4 +97,9 @@ PendingRestockRepository pendingRestockRepository(
   PendingRestockRepositoryRef ref,
 ) {
   return PendingRestockRepository(ref.watch(apiClientProvider));
+}
+
+@Riverpod(keepAlive: true)
+LocationRepository locationRepository(LocationRepositoryRef ref) {
+  return LocationRepository(ref.watch(apiClientProvider));
 }

@@ -1,7 +1,15 @@
 from .category import Category, CategoryCreate, CategoryUpdate
 from .inventory import InventoryAction, RestockRequest, ConsumeRequest, AdjustRequest, CategorySummary, LowStockItem, DashboardSummary
 from .invite import Invite, InviteCreate
-from .location import Location, LocationCreate, LocationUpdate
+from .location import (
+    Location,
+    LocationCreate,
+    LocationUpdate,
+    LocationContents,
+    LocationCategoryOut,
+    LocationProductOut,
+    LocationBatchOut,
+)
 from .notification import NotificationPending
 from .product import Product, ProductCreate, ProductUpdate
 from .token import Token, TokenPayload

@@ -164,6 +164,24 @@ final pendingRestockRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PendingRestockRepositoryRef = ProviderRef<PendingRestockRepository>;
+String _$locationRepositoryHash() =>
+    r'cc11aa22bb33dd44ee55ff66001122334455aabb';
+
+/// See also [locationRepository].
+@ProviderFor(locationRepository)
+final locationRepositoryProvider = Provider<LocationRepository>.internal(
+  locationRepository,
+  name: r'locationRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$locationRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef LocationRepositoryRef = ProviderRef<LocationRepository>;
 String _$baseUrlHash() => r'02111ffdaa162dbbc13c9210ad94d7d99cf21a18';
 
 /// See also [BaseUrl].

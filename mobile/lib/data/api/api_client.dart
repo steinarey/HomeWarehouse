@@ -8,6 +8,7 @@ import 'package:mobile/data/models/dashboard_summary.dart';
 import 'package:mobile/data/models/low_stock_item.dart';
 import 'package:mobile/data/models/connector.dart';
 import 'package:mobile/data/models/pending_restock.dart';
+import 'package:mobile/data/models/location_contents.dart';
 
 class ApiClient {
   final Dio _dio;
@@ -147,6 +148,23 @@ class ApiClient {
   Future<Location> createLocation(Map<String, dynamic> data) async {
     final response = await _dio.post('/locations/', data: data);
     return Location.fromJson(response.data);
+  }
+
+  Future<Location> updateLocation(
+    int locationId,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await _dio.patch('/locations/$locationId', data: data);
+    return Location.fromJson(response.data);
+  }
+
+  Future<void> deleteLocation(int locationId) async {
+    await _dio.delete('/locations/$locationId');
+  }
+
+  Future<LocationContents> getLocationContents(int locationId) async {
+    final response = await _dio.get('/locations/$locationId/contents');
+    return LocationContents.fromJson(response.data);
   }
 
   Future<List<InventoryAction>> getActions({

@@ -190,6 +190,21 @@ class AppLocalizations {
       'listUpdated': 'List updated',
       'syncNow': 'Sync now',
       'syncResultMessage': 'Pushed {pushed} · checked-off {transitioned}',
+      'locations': 'Locations',
+      'addLocation': 'Add location',
+      'editLocation': 'Edit location',
+      'deleteLocation': 'Delete location',
+      'confirmDeleteLocation':
+          'Delete "{name}"? Stock batches lose their location reference but remain in inventory.',
+      'noLocationsYet':
+          'No locations yet. Tap + to add one.',
+      'locationContents': 'Location contents',
+      'room': 'Room',
+      'area': 'Area',
+      'shelfBox': 'Shelf / box',
+      'notes': 'Notes',
+      'loadMore': 'Load more',
+      'noMoreResults': 'No more results',
     },
     'is': {
       'appTitle': 'PantryKeeper',
@@ -370,6 +385,21 @@ class AppLocalizations {
       'listUpdated': 'Listi uppfærður',
       'syncNow': 'Samstilla núna',
       'syncResultMessage': 'Send {pushed} · merkt af {transitioned}',
+      'locations': 'Staðsetningar',
+      'addLocation': 'Bæta við staðsetningu',
+      'editLocation': 'Breyta staðsetningu',
+      'deleteLocation': 'Eyða staðsetningu',
+      'confirmDeleteLocation':
+          'Eyða "{name}"? Birgðir missa tilvísun í staðsetningu en haldast í kerfinu.',
+      'noLocationsYet':
+          'Engar staðsetningar enn. Ýttu á + til að bæta við.',
+      'locationContents': 'Innihald staðsetningar',
+      'room': 'Herbergi',
+      'area': 'Svæði',
+      'shelfBox': 'Hilla / kassi',
+      'notes': 'Athugasemdir',
+      'loadMore': 'Hlaða meira',
+      'noMoreResults': 'Ekki fleiri niðurstöður',
     },
   };
 
