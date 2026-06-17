@@ -156,6 +156,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             onTap: () => context.push('/settings/users'),
           ),
+          ListTile(
+            leading: const Icon(Icons.extension),
+            title: Text(AppLocalizations.of(context).get('connectors')),
+            subtitle: Text(
+              AppLocalizations.of(context).get('connectorsSubtitle'),
+            ),
+            onTap: () => context.push('/settings/connectors'),
+          ),
           const Divider(height: 32),
           Text(
             AppLocalizations.of(context).get('appInfo'),

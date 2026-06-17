@@ -12,6 +12,8 @@ import 'package:mobile/presentation/screens/categories_screen.dart';
 import 'package:mobile/presentation/screens/login_screen.dart';
 import 'package:mobile/presentation/screens/register_screen.dart';
 import 'package:mobile/presentation/screens/user_management_screen.dart';
+import 'package:mobile/presentation/screens/settings/connectors_screen.dart';
+import 'package:mobile/presentation/screens/settings/microsoft_todo_connector_screen.dart';
 import 'package:mobile/domain/providers/auth_provider.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -100,6 +102,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'users',
                     builder: (context, state) => const UserManagementScreen(),
+                  ),
+                  GoRoute(
+                    path: 'connectors',
+                    builder: (context, state) => const ConnectorsScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'microsoft-todo',
+                        builder: (context, state) =>
+                            const MicrosoftTodoConnectorScreen(),
+                      ),
+                    ],
                   ),
                 ],
               ),

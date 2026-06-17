@@ -7,3 +7,5 @@ from .inventory_action import InventoryAction
 from .warehouse import Warehouse
 from .warehouse_member import WarehouseMember
 from .invite import Invite
+from .connector import WarehouseConnector
+from .pending_restock import PendingRestock

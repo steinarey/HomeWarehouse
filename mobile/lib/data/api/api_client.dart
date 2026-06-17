@@ -6,6 +6,8 @@ import 'package:mobile/data/models/product.dart';
 import 'package:mobile/data/models/inventory_action.dart';
 import 'package:mobile/data/models/dashboard_summary.dart';
 import 'package:mobile/data/models/low_stock_item.dart';
+import 'package:mobile/data/models/connector.dart';
+import 'package:mobile/data/models/pending_restock.dart';
 
 class ApiClient {
   final Dio _dio;
@@ -204,5 +206,60 @@ class ApiClient {
 
   Future<void> removeMember(int userId) async {
     await _dio.delete('/users/members/$userId');
+  }
+
+  Future<List<Connector>> getConnectors() async {
+    final response = await _dio.get('/connectors/');
+    return (response.data as List)
+        .map((e) => Connector.fromJson(e))
+        .toList();
+  }
+
+  Future<Connector?> getMicrosoftConnector() async {
+    final response = await _dio.get('/connectors/microsoft-todo');
+    if (response.data == null) return null;
+    return Connector.fromJson(response.data);
+  }
+
+  Future<MicrosoftAuthUrl> getMicrosoftAuthUrl() async {
+    final response = await _dio.get('/connectors/microsoft-todo/auth-url');
+    return MicrosoftAuthUrl.fromJson(response.data);
+  }
+
+  Future<List<MicrosoftList>> getMicrosoftLists() async {
+    final response = await _dio.get('/connectors/microsoft-todo/lists');
+    return (response.data['lists'] as List)
+        .map((e) => MicrosoftList.fromJson(e))
+        .toList();
+  }
+
+  Future<Connector> updateMicrosoftConnector({
+    required String listId,
+    String? listName,
+  }) async {
+    final response = await _dio.patch(
+      '/connectors/microsoft-todo',
+      data: {
+        'list_id': listId,
+        if (listName != null) 'list_name': listName,
+      },
+    );
+    return Connector.fromJson(response.data);
+  }
+
+  Future<void> disconnectMicrosoftConnector() async {
+    await _dio.delete('/connectors/microsoft-todo');
+  }
+
+  Future<List<PendingRestock>> getPendingRestocks() async {
+    final response = await _dio.get('/pending-restock/');
+    return (response.data as List)
+        .map((e) => PendingRestock.fromJson(e))
+        .toList();
+  }
+
+  Future<PendingRestock> dismissPendingRestock(int id) async {
+    final response = await _dio.post('/pending-restock/$id/dismiss');
+    return PendingRestock.fromJson(response.data);
   }
 }

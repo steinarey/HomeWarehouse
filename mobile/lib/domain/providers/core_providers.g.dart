@@ -142,5 +142,42 @@ final baseUrlProvider = NotifierProvider<BaseUrl, String>.internal(
 );
 
 typedef _$BaseUrl = Notifier<String>;
+String _$connectorRepositoryHash() =>
+    r'aa11ee22bb33cc44dd55ee66ff7788990011aabb';
+
+/// See also [connectorRepository].
+@ProviderFor(connectorRepository)
+final connectorRepositoryProvider = Provider<ConnectorRepository>.internal(
+  connectorRepository,
+  name: r'connectorRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$connectorRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ConnectorRepositoryRef = ProviderRef<ConnectorRepository>;
+String _$pendingRestockRepositoryHash() =>
+    r'bb22ff33cc44dd55ee66aa77bb8899001122bbcc';
+
+/// See also [pendingRestockRepository].
+@ProviderFor(pendingRestockRepository)
+final pendingRestockRepositoryProvider =
+    Provider<PendingRestockRepository>.internal(
+  pendingRestockRepository,
+  name: r'pendingRestockRepositoryProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$pendingRestockRepositoryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PendingRestockRepositoryRef = ProviderRef<PendingRestockRepository>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile/domain/providers/dashboard_provider.dart';
+import 'package:mobile/domain/providers/pending_restock_provider.dart';
+import 'package:mobile/presentation/common/pending_restock_block.dart';
 import 'package:mobile/presentation/common/summary_card.dart';
 import 'package:mobile/presentation/common/recent_activity_list.dart';
 
@@ -18,7 +20,10 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(AppLocalizations.of(context).get('dashboard')), actions: const []),
       body: dashboardAsync.when(
         data: (dashboard) => RefreshIndicator(
-          onRefresh: () => ref.refresh(dashboardProvider.future),
+          onRefresh: () async {
+            ref.invalidate(pendingRestocksProvider);
+            await ref.refresh(dashboardProvider.future);
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
@@ -69,6 +74,7 @@ class HomeScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
+                const PendingRestockBlock(),
                 Text(
                   AppLocalizations.of(context).get('recentActivity'),
                   style: const TextStyle(

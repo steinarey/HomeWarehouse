@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -7,6 +8,29 @@ from app.models.stock_batch import StockBatch
 from app.models.inventory_action import InventoryAction
 from app.models.category import Category
 from app.schemas.inventory import RestockRequest, ConsumeRequest, AdjustRequest
+
+logger = logging.getLogger(__name__)
+
+
+def _resolve_pending_restocks(db: Session, warehouse_id: int, category_id: Optional[int]) -> None:
+    """Best-effort: auto-resolve open PendingRestock rows for the affected
+    category after a stock mutation. Never raises — a connector hiccup must not
+    block the inventory action.
+    """
+    if category_id is None:
+        return
+    try:
+        # Local import keeps the integration module out of the InventoryService
+        # import graph for tests that don't need it.
+        from app.integrations.microsoft_todo.sync import resolve_for_category
+        resolve_for_category(
+            db,
+            warehouse_id=warehouse_id,
+            category_id=category_id,
+            reason="inventory_change",
+        )
+    except Exception:
+        logger.exception("Failed to auto-resolve pending restocks for category %s", category_id)
 
 
 def _consume_fefo(db: Session, product_id: int, amount: int) -> Optional[int]:
@@ -101,6 +125,7 @@ class InventoryService:
         db.add(action)
         db.commit()
         db.refresh(action)
+        _resolve_pending_restocks(db, product.warehouse_id, product.category_id)
         return action
 
     @staticmethod
@@ -132,6 +157,7 @@ class InventoryService:
         db.add(action)
         db.commit()
         db.refresh(action)
+        _resolve_pending_restocks(db, product.warehouse_id, product.category_id)
         return action
 
     @staticmethod
@@ -178,6 +204,7 @@ class InventoryService:
         db.add(action)
         db.commit()
         db.refresh(action)
+        _resolve_pending_restocks(db, product.warehouse_id, product.category_id)
         return action
 
     @staticmethod
@@ -244,4 +271,5 @@ class InventoryService:
         db.add(new_action)
         db.commit()
         db.refresh(new_action)
+        _resolve_pending_restocks(db, original_action.warehouse_id, original_action.category_id)
         return new_action

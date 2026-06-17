@@ -7,3 +7,11 @@ from .product import Product, ProductCreate, ProductUpdate
 from .token import Token, TokenPayload
 from .user import User, UserCreate, UserUpdate
 from .warehouse_member import WarehouseMemberOut
+from .connector import (
+    ConnectorOut,
+    ConnectorListUpdate,
+    MicrosoftAuthUrlOut,
+    MicrosoftListOut,
+    MicrosoftListsOut,
+)
+from .pending_restock import PendingRestockOut

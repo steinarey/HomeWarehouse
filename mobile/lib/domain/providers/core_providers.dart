@@ -8,6 +8,8 @@ import 'package:mobile/data/repositories/user_repository.dart';
 import 'package:mobile/data/repositories/inventory_repository.dart';
 import 'package:mobile/data/repositories/product_repository.dart';
 import 'package:mobile/data/repositories/category_repository.dart';
+import 'package:mobile/data/repositories/connector_repository.dart';
+import 'package:mobile/data/repositories/pending_restock_repository.dart';
 
 part 'core_providers.g.dart';
 
@@ -82,4 +84,16 @@ ProductRepository productRepository(ProductRepositoryRef ref) {
 @Riverpod(keepAlive: true)
 CategoryRepository categoryRepository(CategoryRepositoryRef ref) {
   return CategoryRepository(ref.watch(apiClientProvider));
+}
+
+@Riverpod(keepAlive: true)
+ConnectorRepository connectorRepository(ConnectorRepositoryRef ref) {
+  return ConnectorRepository(ref.watch(apiClientProvider));
+}
+
+@Riverpod(keepAlive: true)
+PendingRestockRepository pendingRestockRepository(
+  PendingRestockRepositoryRef ref,
+) {
+  return PendingRestockRepository(ref.watch(apiClientProvider));
 }
