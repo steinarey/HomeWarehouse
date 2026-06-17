@@ -1,1 +1,16 @@
 *.pyc
+
+# OS noise
+.DS_Store
+
+# -- Backend (FastAPI / Python) --------------------------------------------
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/.venv/
+backend/.env
+.env
+
+# -- Mobile (Flutter) -------------------------------------------------------
+# Most Flutter-specific ignores stay in mobile/.gitignore (build artifacts,
+# .dart_tool, IDE files). Nothing duplicated here.
