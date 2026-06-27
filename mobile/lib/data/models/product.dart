@@ -19,6 +19,8 @@ class Product {
   // Optional fields that might be included in some responses
   @JsonKey(name: 'category_name')
   final String? categoryName;
+  @JsonKey(name: 'current_stock')
+  final int? currentStock;
 
   Product({
     required this.id,
@@ -29,6 +31,7 @@ class Product {
     this.photoUrl,
     this.locationId,
     this.categoryName,
+    this.currentStock,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) =>

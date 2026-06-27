@@ -25,6 +25,7 @@ class ProductUpdate(BaseModel):
 
 class Product(ProductBase):
     id: int
+    current_stock: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 

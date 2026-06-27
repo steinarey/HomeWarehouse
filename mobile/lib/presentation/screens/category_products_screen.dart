@@ -104,7 +104,15 @@ class _CategoryProductsScreenState
                 return ListTile(
                   leading: const Icon(Icons.inventory_2),
                   title: Text(p.name),
-                  subtitle: _LocationSubtitle(locationId: p.locationId),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${l10n.get('currentStock')}: ${p.currentStock ?? 0}',
+                      ),
+                      _LocationSubtitle(locationId: p.locationId),
+                    ],
+                  ),
                   trailing: const Icon(Icons.edit),
                   onTap: () => _showEditDialog(p),
                 );
@@ -119,6 +127,9 @@ class _CategoryProductsScreenState
   Future<void> _showEditDialog(Product product) async {
     final l10n = AppLocalizations.of(context);
     final nameCtrl = TextEditingController(text: product.name);
+    final packageSizeCtrl = TextEditingController(
+      text: product.packageSize.toString(),
+    );
     final locationId = ValueNotifier<int?>(product.locationId);
 
     await showDialog(
@@ -134,6 +145,12 @@ class _CategoryProductsScreenState
                 controller: nameCtrl,
                 decoration: InputDecoration(labelText: l10n.get('name')),
                 autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: packageSizeCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l10n.get('packageSize')),
               ),
               const SizedBox(height: 12),
               _ProductLocationDropdown(selected: locationId),
@@ -152,11 +169,19 @@ class _CategoryProductsScreenState
           ),
           ElevatedButton(
             onPressed: () async {
+              final packageSize = int.tryParse(packageSizeCtrl.text.trim());
+              if (packageSize == null || packageSize < 1) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(l10n.get('packageSizeInvalid'))),
+                );
+                return;
+              }
               try {
                 await ref.read(productRepositoryProvider).updateProduct(
                   product.id,
                   {
                     'name': nameCtrl.text,
+                    'package_size': packageSize,
                     'location_id': locationId.value,
                   },
                 );

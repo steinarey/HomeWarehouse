@@ -33,7 +33,26 @@ def read_products(
                 ProductModel.barcode.ilike(pattern),
             )
         )
-    return query.order_by(ProductModel.name.asc()).offset(skip).limit(limit).all()
+    products = query.order_by(ProductModel.name.asc()).offset(skip).limit(limit).all()
+
+    # Attach current stock (sum of batch quantities) in one grouped query
+    # instead of N+1 per product.
+    product_ids = [p.id for p in products]
+    if product_ids:
+        rows = (
+            db.query(
+                StockBatchModel.product_id,
+                func.coalesce(func.sum(StockBatchModel.quantity), 0),
+            )
+            .filter(StockBatchModel.product_id.in_(product_ids))
+            .group_by(StockBatchModel.product_id)
+            .all()
+        )
+        totals = {pid: int(total) for pid, total in rows}
+        for p in products:
+            p.current_stock = totals.get(p.id, 0)
+
+    return products
 
 @router.post("/", response_model=Product)
 def create_product(
