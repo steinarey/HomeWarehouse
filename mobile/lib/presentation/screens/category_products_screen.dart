@@ -130,6 +130,8 @@ class _CategoryProductsScreenState
     final packageSizeCtrl = TextEditingController(
       text: product.packageSize.toString(),
     );
+    final currentStock = product.currentStock ?? 0;
+    final stockCtrl = TextEditingController(text: currentStock.toString());
     final locationId = ValueNotifier<int?>(product.locationId);
 
     await showDialog(
@@ -151,6 +153,14 @@ class _CategoryProductsScreenState
                 controller: packageSizeCtrl,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(labelText: l10n.get('packageSize')),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: stockCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: l10n.get('currentStock'),
+                ),
               ),
               const SizedBox(height: 12),
               _ProductLocationDropdown(selected: locationId),
@@ -176,6 +186,13 @@ class _CategoryProductsScreenState
                 );
                 return;
               }
+              final newStock = int.tryParse(stockCtrl.text.trim());
+              if (newStock == null || newStock < 0) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(l10n.get('stockInvalid'))),
+                );
+                return;
+              }
               try {
                 await ref.read(productRepositoryProvider).updateProduct(
                   product.id,
@@ -185,6 +202,13 @@ class _CategoryProductsScreenState
                     'location_id': locationId.value,
                   },
                 );
+                if (newStock != currentStock) {
+                  await ref.read(inventoryRepositoryProvider).adjust(
+                        productId: product.id,
+                        newTotalQuantity: newStock,
+                      );
+                }
+                ref.invalidate(categoriesProvider);
                 if (dialogContext.mounted) {
                   Navigator.pop(dialogContext);
                   _refresh();

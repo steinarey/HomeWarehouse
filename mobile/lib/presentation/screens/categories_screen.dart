@@ -69,25 +69,22 @@ class CategoriesScreen extends ConsumerWidget {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () =>
-                            _showAdjustDialog(context, ref, category, current),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: chipColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            '$current',
-                            style: TextStyle(
-                              color: chipFg,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      // Display-only: category stock is the sum of its
+                      // products' stock. Adjust stock per product instead.
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: chipColor,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '$current',
+                          style: TextStyle(
+                            color: chipFg,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -117,86 +114,6 @@ class CategoriesScreen extends ConsumerWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Future<void> _showAdjustDialog(
-    BuildContext context,
-    WidgetRef ref,
-    Category category,
-    int currentStock,
-  ) async {
-    final l10n = AppLocalizations.of(context);
-    final controller = TextEditingController(text: currentStock.toString());
-
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          '${l10n.get('adjustAction')}: ${category.name}',
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '${l10n.get('currentStock')}: $currentStock',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: l10n.get('newTotalQuantity'),
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.get('cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final qty = int.tryParse(controller.text);
-              if (qty == null || qty < 0) return;
-              try {
-                await ref
-                    .read(categoryRepositoryProvider)
-                    .adjustCategoryStock(
-                      categoryId: category.id,
-                      newTotalQuantity: qty,
-                    );
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ref.invalidate(categoriesProvider);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${l10n.get('adjustedMessage')} ${category.name} → $qty',
-                      ),
-                    ),
-                  );
-                }
-              } on Object catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${l10n.get('errorMessage')}: $e',
-                      ),
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text(l10n.get('save')),
-          ),
-        ],
       ),
     );
   }
